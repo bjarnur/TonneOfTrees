@@ -79,6 +79,24 @@ unsigned int indices[] = {  // note that we start from 0!
 	1, 2, 3    // second triangle
 };
 
+
+glm::vec3 up(0.0f, 1.0f, 0.0f);
+glm::vec3 camera_position(0.0f, 0.0f, 3.0f);
+glm::vec3 camera_front(0.0f, 0.0f, -1.0f);
+glm::vec3 camera_target(0.0f, 0.0f, 0.0f);
+glm::vec3 camera_direction = glm::normalize(camera_position - camera_target);
+glm::vec3 camera_right = glm::normalize(glm::cross(up, camera_direction));
+glm::vec3 camera_up = glm::cross(camera_direction, camera_right);
+
+float deltaTime = 0.0f;	// Time between current frame and last frame
+float lastFrame = 0.0f; // Time of last frame
+
+bool first_mouse = true;
+float lastX = 400, lastY = 300;
+float pitch = 0.0f;
+float yaw = 0.0f;
+double fov = 45.0;
+
 /****************************\
 	Function declarations
 \****************************/
@@ -100,7 +118,13 @@ void process_input(GLFWwindow * window);
 Callback resizes viewport based on new window size */
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
+/**
+Callback function for capturing input from mouse */
+void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
+/**
+*/
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 /******************************\
 	Function Definitions
 \******************************/
@@ -158,6 +182,8 @@ int main()
 
 	glEnable(GL_DEPTH_TEST);
 
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
 	//Rendering loop
 	while (!glfwWindowShouldClose(window))
 	{
@@ -188,17 +214,24 @@ int main()
 		trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0, 0.0, 1.0));		
 		unsigned int transform_loc = glGetUniformLocation(shader_program.ID, "transform");
 		glUniformMatrix4fv(transform_loc, 1, GL_FALSE, glm::value_ptr(trans));
-		*/
+		*/		
+		glm::vec3 front;
+		front.x = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
+		front.y = sin(glm::radians(pitch));
+		front.z = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
+		camera_front = glm::normalize(front);
 
 		glm::mat4 model;
 		//model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0, 0.0, 0.0));
 		model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
 
-		glm::mat4 view;
-		view = glm::translate(view, glm::vec3(0.0, 0.0, -3.0));
+		glm::mat4 view = glm::lookAt(
+			camera_position,
+			camera_position + camera_front,
+			camera_up);
 
 		glm::mat4 project;
-		project = glm::perspective(glm::radians(-45.0), 800.0/600.0,0.1, 100.0);
+		project = glm::perspective(glm::radians(-fov), 800.0/600.0,0.1, 100.0);
 
 		unsigned int model_uniform = glGetUniformLocation(shader_program.ID, "model");
 		glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
@@ -261,6 +294,8 @@ GLFWwindow * initialize_window()
 
 	//Registering callback functions
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	glfwSetCursorPosCallback(window, mouse_callback);
+	glfwSetScrollCallback(window, scroll_callback);
 	
 	return window;
 }
@@ -305,10 +340,62 @@ void process_input(GLFWwindow * window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
+	
+	float currentFrame = glfwGetTime();
+	deltaTime = currentFrame - lastFrame;
+	lastFrame = currentFrame;
+	float cameraSpeed = 2.5f * deltaTime; // adjust accordingly
+
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+		camera_position += cameraSpeed * camera_front;
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		camera_position -= cameraSpeed * camera_front;
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+		camera_position -= glm::normalize(glm::cross(camera_front, camera_up)) * cameraSpeed;
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+		camera_position += glm::normalize(glm::cross(camera_front, camera_up)) * cameraSpeed;
 }
 
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	glViewport(0, 0, width, height);
+}
+
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+	if (first_mouse)
+	{
+		lastX = xpos;
+		lastY = ypos;
+		first_mouse = false;
+	}
+
+	float x_offset = lastX - xpos;
+	float y_offset = lastY - ypos;
+	lastX = xpos;
+	lastY = ypos;
+
+	float sensitivity = 0.05f;
+	x_offset *= sensitivity;
+	y_offset *= sensitivity;
+
+	yaw += x_offset;
+	pitch -= y_offset;
+
+	if (pitch > 89.0f)
+		pitch = 89.0f;
+	if (pitch < -89.0f)
+		pitch = -89.0f;
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	if (fov >= 1.0f && fov <= 45.0f)
+		fov -= yoffset;
+	if (fov <= 1.0f)
+		fov = 1.0f;
+	if (fov >= 45.0f)
+		fov = 45.0f;
 }
