@@ -94,7 +94,7 @@ float lastFrame = 0.0f; // Time of last frame
 bool first_mouse = true;
 float lastX = 400, lastY = 300;
 float pitch = 0.0f;
-float yaw = 0.0f;
+float yaw = -90.0f;
 double fov = 45.0;
 
 /****************************\
@@ -220,10 +220,12 @@ int main()
 		front.y = sin(glm::radians(pitch));
 		front.z = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
 		camera_front = glm::normalize(front);
+		camera_right = glm::normalize(glm::cross(camera_front, up));
+		camera_up = glm::normalize(glm::cross(camera_right, camera_front));
 
-		glm::mat4 model;
+		//glm::mat4 model;
 		//model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0, 0.0, 0.0));
-		model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
+		//model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
 
 		glm::mat4 view = glm::lookAt(
 			camera_position,
@@ -231,10 +233,10 @@ int main()
 			camera_up);
 
 		glm::mat4 project;
-		project = glm::perspective(glm::radians(-fov), 800.0/600.0,0.1, 100.0);
+		project = glm::perspective(glm::radians(fov), 800.0/600.0, 0.1, 100.0);
 
 		unsigned int model_uniform = glGetUniformLocation(shader_program.ID, "model");
-		glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+		//glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
 
 		unsigned int view_uniform = glGetUniformLocation(shader_program.ID, "view");
 		glUniformMatrix4fv(view_uniform, 1, GL_FALSE, glm::value_ptr(view));
@@ -372,7 +374,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 		first_mouse = false;
 	}
 
-	float x_offset = lastX - xpos;
+	float x_offset = xpos - lastX;
 	float y_offset = lastY - ypos;
 	lastX = xpos;
 	lastY = ypos;
@@ -382,7 +384,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 	y_offset *= sensitivity;
 
 	yaw += x_offset;
-	pitch -= y_offset;
+	pitch += y_offset;
 
 	if (pitch > 89.0f)
 		pitch = 89.0f;
