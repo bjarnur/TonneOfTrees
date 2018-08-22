@@ -132,7 +132,7 @@ int main()
 	}
 	
 	//Configure shader program used by OpenGL
-	Shader shader_program = Shader("vertex_shader.txt", "fragment_shader.txt");		
+	Shader shader_program = Shader("shaders\\vertex_shader.txt", "shaders\\fragment_shader.txt");		
 	Camera camera(glm::vec3(0.0, 0.0, 3.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
 	
 	shader_program.use();
@@ -156,8 +156,8 @@ int main()
 	glEnableVertexAttribArray(1);	
 	
 	//Loading up textures
-	unsigned int tex1 = load_texture("container.jpg", false);
-	unsigned int tex2 = load_texture("awesomeface.png", true);	
+	unsigned int tex1 = load_texture("textures\\container.jpg", false);
+	unsigned int tex2 = load_texture("textures\\awesomeface.png", true);	
 	shader_program.setInt("texture1", 0); // uniform texture1 has value 0
 	shader_program.setInt("texture2", 1); // uniform texture2 has balue 1
 

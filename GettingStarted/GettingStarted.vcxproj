@@ -71,6 +71,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <IncludePath>D:\Program Files\C++\Libraries\glm;D:\Program Files\C++\Libraries\glad\include;D:\Program Files\C++\Libraries\glfw-3.2.1.bin.WIN32\include;$(IncludePath)</IncludePath>
     <LibraryPath>D:\Program Files\C++\Libraries\glfw-3.2.1.bin.WIN32\lib-vc2015;$(LibraryPath)</LibraryPath>
+    <SourcePath>D:\Bjarni\Projects\Graphics\LearnOpenGL\GettingStarted\GettingStarted\source;$(SourcePath)</SourcePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Resource Files\Shaders">
+      <UniqueIdentifier>{ad24415e-3e94-4664-890a-32b0416910b4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="glad.cpp">
@@ -40,11 +43,11 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="vertex_shader.txt">
-      <Filter>Resource Files</Filter>
-    </Text>
     <Text Include="fragment_shader.txt">
-      <Filter>Resource Files</Filter>
+      <Filter>Resource Files\Shaders</Filter>
+    </Text>
+    <Text Include="vertex_shader.txt">
+      <Filter>Resource Files\Shaders</Filter>
     </Text>
   </ItemGroup>
 </Project>
