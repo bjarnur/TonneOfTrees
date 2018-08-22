@@ -202,12 +202,22 @@ int main()
 		//Place rectangles out in the world
 		for (int i = 0; i < 10; i++)
 		{
+			for (int j = 0; j < 5; j++)
+			{
+				glm::mat4 model;
+				model = glm::translate(model, glm::vec3(i * 2.0f, 0.0, j * 2.0f));
+				model = glm::rotate(model, glm::radians(45.0f), glm::vec3(1.0f, 0.0f, 1.0f));
+				model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.0, 1.0, 0.0));
+				shader_program.setMat4("model", model);
+				glDrawArrays(GL_TRIANGLES, 0, 36);
+			}
+
+			/*
 			float angle = 20.0f * i;
 			glm::mat4 model;			
 			model = glm::translate(model, cubePositions[i]);			
-			model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-			shader_program.setMat4("model", model);
-			glDrawArrays(GL_TRIANGLES, 0, 36);
+			model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));			
+			*/
 		}
 
 		glfwSwapBuffers(window);
