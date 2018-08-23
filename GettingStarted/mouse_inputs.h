@@ -1,3 +1,6 @@
+#ifndef MOUSE_H
+#define MOUSE_H
+
 class Mouse
 {
 	public:
@@ -51,3 +54,5 @@ class Mouse
 		float yaw;
 		double fov;
 };
+
+#endif // !MOUSE_H
