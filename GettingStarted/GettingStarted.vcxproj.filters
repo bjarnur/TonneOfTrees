@@ -58,10 +58,10 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="fragment_shader.txt">
+    <Text Include="shaders\fragment_shader.txt">
       <Filter>Resource Files\Shaders</Filter>
     </Text>
-    <Text Include="vertex_shader.txt">
+    <Text Include="shaders\vertex_shader.txt">
       <Filter>Resource Files\Shaders</Filter>
     </Text>
   </ItemGroup>

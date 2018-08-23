@@ -11,75 +11,8 @@
 #include "stb_image.h"
 
 #include "camera.h"
-#include "shader.h"
+#include "model.h"
 #include "mouse_inputs.h"
-
-
-/*************************\
-	Shape Definitions
-\*************************/
-
-float vertices[] = {
-	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-	0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-	0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-	0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-	0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-	0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-	0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-	-0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-
-	-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-	-0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-	-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-	0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-	0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-	0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-	0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-	0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-	0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-	0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-	0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-	0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-
-	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-	0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-	0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-	0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-	-0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f
-};
-
-glm::vec3 cubePositions[] = {
-	glm::vec3(0.0f,  0.0f,  0.0f),
-	glm::vec3(2.0f,  5.0f, -15.0f),
-	glm::vec3(-1.5f, -2.2f, -2.5f),
-	glm::vec3(-3.8f, -2.0f, -12.3f),
-	glm::vec3(2.4f, -0.4f, -3.5f),
-	glm::vec3(-1.7f,  3.0f, -7.5f),
-	glm::vec3(1.3f, -2.0f, -2.5f),
-	glm::vec3(1.5f,  2.0f, -2.5f),
-	glm::vec3(1.5f,  0.2f, -1.5f),
-	glm::vec3(-1.3f,  1.0f, -1.5f)
-};
-
-unsigned int indices[] = {  // note that we start from 0!
-	0, 1, 3,   // first triangle
-	1, 2, 3    // second triangle
-};
 
 
 
@@ -87,9 +20,12 @@ unsigned int indices[] = {  // note that we start from 0!
 	Global variables
 \*************************/
 
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
+
 float deltaTime = 0.0f;	// Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
-Mouse mouse(400, 300);
+Mouse mouse(SCR_WIDTH/2, SCR_HEIGHT/2);
 
 /****************************\
 	Function declarations
@@ -132,60 +68,32 @@ int main()
 	}
 	
 	//Configure shader program used by OpenGL
-	Shader shader_program = Shader("shaders\\vertex_shader.txt", "shaders\\fragment_shader.txt");		
 	Camera camera(glm::vec3(0.0, 0.0, 3.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
-	
+	Shader shader_program = Shader("shaders\\vertex_shader.txt", "shaders\\fragment_shader.txt");				
 	shader_program.use();
-
-	unsigned int VAO, VBO;
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-
-	//Vertex Array Object persists subsequent Vertex Attribute
-	//Vertex Buffer Object used to place Vertices in memory for the GPU to find them
-	glBindVertexArray(VAO);	
-
-	//Vertex Buffer Object (where we leave our vertices so that the GPU can find them)			
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-	//Describe vertex attributes for the graphics pipeline
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);	
 	
-	//Loading up textures
-	unsigned int tex1 = load_texture("textures\\container.jpg", false);
-	unsigned int tex2 = load_texture("textures\\awesomeface.png", true);	
-	shader_program.setInt("texture1", 0); // uniform texture1 has value 0
-	shader_program.setInt("texture2", 1); // uniform texture2 has balue 1
-
 	//Enable z-buffer
 	glEnable(GL_DEPTH_TEST);
 
 	//Configure mouse attributes
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+	Model nano_model("D:\\Bjarni\\Projects\\3Dmodels\\nanosuit\\nanosuit.obj");
+
 	//Rendering loop
 	while (!glfwWindowShouldClose(window))
 	{
+		float currentFrame = glfwGetTime();
+		deltaTime = currentFrame - lastFrame;
+		lastFrame = currentFrame;		
+
 		process_input(window, camera);
 		camera.update(mouse.pitch, mouse.yaw);
 
 		//Clearing screen
 		glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);			
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		//Select Vertex Array Object to use
-		glBindVertexArray(VAO);		
-
-		//Bind relevant textures
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, tex1);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, tex2);
-			
 		//Setting up transformation matrices
 		glm::mat4 view = glm::lookAt(
 			camera.position,
@@ -194,31 +102,18 @@ int main()
 		shader_program.setMat4("view", view);
 
 		glm::mat4 project = glm::perspective(
-			glm::radians(mouse.fov), 
-			800.0/600.0, 
-			0.1, 100.0);
+			(float) glm::radians(mouse.fov),
+			(float)SCR_WIDTH / (float)SCR_HEIGHT,
+			0.1f, 100.0f);
 		shader_program.setMat4("project", project);
 
-		//Place rectangles out in the world
-		for (int i = 0; i < 10; i++)
-		{
-			for (int j = 0; j < 5; j++)
-			{
-				glm::mat4 model;
-				model = glm::translate(model, glm::vec3(i * 2.0f, 0.0, j * 2.0f));
-				model = glm::rotate(model, glm::radians(45.0f), glm::vec3(1.0f, 0.0f, 1.0f));
-				model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.0, 1.0, 0.0));
-				shader_program.setMat4("model", model);
-				glDrawArrays(GL_TRIANGLES, 0, 36);
-			}
+		// render the loaded model
+		glm::mat4 model;
+		model = glm::translate(model, glm::vec3(0.0f, -1.75f, 0.0f)); // translate it down so it's at the center of the scene
+		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));	// it's a bit too big for our scene, so scale it down
+		shader_program.setMat4("model", model);
 
-			/*
-			float angle = 20.0f * i;
-			glm::mat4 model;			
-			model = glm::translate(model, cubePositions[i]);			
-			model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));			
-			*/
-		}
+		nano_model.draw(shader_program);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -228,18 +123,6 @@ int main()
 	return 0;
 }
 
-/*
-//Rotate over time
-glm::mat4 trans;
-trans = glm::translate(trans, glm::vec3(0.5, -0.5, 0.0));
-trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0, 0.0, 1.0));
-unsigned int transform_loc = glGetUniformLocation(shader_program.ID, "transform");
-glUniformMatrix4fv(transform_loc, 1, GL_FALSE, glm::value_ptr(trans));
-*/
-
-//glm::mat4 model;
-//model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0, 0.0, 0.0));
-//model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
 
 GLFWwindow * initialize_window()
 {
@@ -249,7 +132,7 @@ GLFWwindow * initialize_window()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	//Establishing a window and setting current context
-	GLFWwindow * window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
+	GLFWwindow * window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
 	if (window == NULL)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -266,7 +149,7 @@ GLFWwindow * initialize_window()
 	}
 
 	//Default size of rendering window
-	glViewport(0, 0, 800, 600);
+	glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
 	//Registering callback functions
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
@@ -314,13 +197,10 @@ unsigned int load_texture(const char * file_path, bool use_alpha)
 
 void process_input(GLFWwindow * window, Camera & camera)
 {
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
-	
-	float currentFrame = glfwGetTime();
-	deltaTime = currentFrame - lastFrame;
-	lastFrame = currentFrame;
 	float cameraSpeed = 2.5f * deltaTime; // adjust accordingly
+
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, true);	
 
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 		camera.position += cameraSpeed * camera.front;

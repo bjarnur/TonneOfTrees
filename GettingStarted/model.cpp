@@ -1,6 +1,13 @@
 #include "model.h"
 #include "stb_image.h"
 
+Model::Model(char * path)
+{
+	{
+		load_model(path);
+	}
+}
+
 void Model::draw(Shader & shader)
 {
 	for (unsigned int i = 0; i < meshes.size(); i++)
@@ -19,7 +26,7 @@ void Model::load_model(std::string path)
 		return;
 	}
 
-	directory = path.substr(0, path.find_last_of('/'));
+	directory = path.substr(0, path.find_last_of('\\'));
 	process_node(scene->mRootNode, scene);
 }
 
@@ -134,7 +141,7 @@ std::vector<Texture> Model::load_material_textures(
 unsigned int Model::texture_from_file(const char * name, std::string path)
 {
 	std::string filename = std::string(path);
-	filename = directory + '/' + filename;
+	filename = directory + '\\' + name;
 
 	unsigned int textureID;
 	glGenTextures(1, &textureID);

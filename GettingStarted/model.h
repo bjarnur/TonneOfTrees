@@ -14,10 +14,7 @@ class Model
 {
 	public:
 		/*  Functions   */
-		Model(char *path)
-		{
-			load_model(path);
-		}
+		Model(char *path);
 		void draw(Shader & shader);
 	private:
 		/*  Model Data  */

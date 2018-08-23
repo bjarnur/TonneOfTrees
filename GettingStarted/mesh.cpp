@@ -6,7 +6,10 @@
 Mesh::Mesh(	std::vector<Vertex> vertices,
 			std::vector<unsigned int> indices,
 			std::vector<Texture> textures)
-	: vertices(vertices), indices(indices), textures(textures) {}
+	: vertices(vertices), indices(indices), textures(textures) 
+{
+	setup_mesh();
+}
 
 void Mesh::draw(Shader & shader)
 {
@@ -25,7 +28,8 @@ void Mesh::draw(Shader & shader)
 		else if (name == "texture_specular")
 			number = std::to_string(specular_nr++);
 
-		shader.setFloat(("material." + name + number).c_str(), i);
+		//shader.setFloat(("material." + name + number).c_str(), i);
+		shader.setFloat((name + number).c_str(), i);
 		glBindTexture(GL_TEXTURE_2D, textures[i].ID);			
 	}
 	glActiveTexture(GL_TEXTURE0);
