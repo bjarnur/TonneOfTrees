@@ -28,6 +28,8 @@ float deltaTime = 0.0f;	// Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
 Mouse mouse(SCR_WIDTH/2, SCR_HEIGHT/2);
 
+bool draw_wireframe = false;
+
 /****************************\
 	Function declarations
 \****************************/
@@ -171,15 +173,20 @@ int main()
 		glBindVertexArray(0);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glDisable(GL_DEPTH_TEST);
-		glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		screen_shader.use();
 
 		//Render a single quad
+		if(draw_wireframe)
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		else
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
 		glBindVertexArray(quadVAO);		
 		glBindTexture(GL_TEXTURE_2D, tex_color_buffer);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
-
+		
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
@@ -199,6 +206,7 @@ void texture_to_image(bool flip_image)
 	std::vector<unsigned char>	pxls(output_width * output_height * 3);
 
 	glReadBuffer(GL_COLOR_ATTACHMENT0);	
+	//glReadBuffer(GL_DEPTH_ATTACHMENT);
 	glReadPixels(0, 0, output_width, output_height, GL_RGB, GL_UNSIGNED_BYTE, &pxls[0]);
 
 	output_image = fopen("D:\\Bjarni\\Projects\\3Dmodels\\output.ppm", "wt");
@@ -254,13 +262,19 @@ GLuint get_texture_framebuffer(GLuint& tex_color_buffer)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex_color_buffer, 0);
-
+	
 	// create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
 	unsigned int rbo;
 	glGenRenderbuffers(1, &rbo);
-	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT); // use a single renderbuffer object for both a depth AND stencil buffer.
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo); // now actually attach it
+	glBindRenderbuffer(GL_RENDERBUFFER, rbo);	
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, SCR_WIDTH, SCR_HEIGHT); // use a single renderbuffer object for both a depth AND stencil buffer.
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo); // now actually attach it
+	//glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT); // use a single renderbuffer object for both a depth AND stencil buffer.
+	//glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo); // now actually attach it
+	
+	//TODO: attach an additional buffer here, will keep Z z^, alpha, and ambient occlusion
+	//The depth values can be altered in the vertex buffer, unclear about the others
+	//to begin with we can change the color one to include alpha, then compute alpha in vertex and save it as depth in fragment
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
@@ -356,6 +370,10 @@ void process_input(GLFWwindow * window, Camera & camera)
 		camera.position -= glm::normalize(glm::cross(camera.front, camera.up)) * cameraSpeed;
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		camera.position += glm::normalize(glm::cross(camera.front, camera.up)) * cameraSpeed;
+	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
+		draw_wireframe = true;
+	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_RELEASE)
+		draw_wireframe = false;
 }
 
 
