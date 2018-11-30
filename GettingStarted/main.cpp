@@ -31,8 +31,10 @@ float deltaTime = 0.0f;	// Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
 Mouse mouse(SCR_WIDTH/2, SCR_HEIGHT/2);
 
+float config_swap_timer = 0.f;
 bool draw_wireframe = false;
 bool draw_sample_views = false;
+bool draw_sample_rays = false;
 
 /****************************\
 	Function declarations
@@ -76,8 +78,10 @@ Prepare a screen-coverin quad */
 void set_buffers_for_quad_render(GLuint & quadVAO, GLuint & quadVBO);
 
 /**
-Prepare uniformally distrubeted points on a sphere */
-void sample_on_bounding_sphere(Model model, int num_samples, GLuint & VAO, GLuint & VBO);
+Prepare uniformally distrubeted points on the models bounding sphere */
+void sample_on_bounding_sphere(Model model, int num_samples, GLuint & VAO, GLuint & VBO, GLuint & lineVAO, GLuint & lineVBO);
+
+void rays_from_point_to_center(GLuint & VAO, GLuint & VBO, glm::vec3 * points, const glm::vec3 & center, int num_samples);
 
 /**
 */
@@ -86,9 +90,11 @@ void setup_matrices(Camera camera, glm::mat4 & view, glm::mat4 & proj, glm::mat4
 void draw_model(Model nano_model, Shader shader_program, const glm::mat4 & view, 
 				const glm::mat4 & proj, const glm::mat4 & model);
 
-void draw_sample_points(GLuint sphereVAO, Shader sphere_shader, const glm::mat4 & view, 
+void draw_sample_views_func(GLuint sphereVAO, Shader sphere_shader, const glm::mat4 & view, 
 						const glm::mat4 & proj, const glm::mat4 & model);
 
+void draw_sample_ray_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
+						const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx);
 
 /******************************\
 	Function Definitions
@@ -122,9 +128,9 @@ int main()
 	nano_model.get_bounding_sphere(center, radius);
 	
 	//Preparing other geometry
-	GLuint quadVAO, quadVBO, sphereVAO, sphereVBO;
+	GLuint quadVAO, quadVBO, sphereVAO, sphereVBO, lineVAO, lineVBO;
 	set_buffers_for_quad_render(quadVAO, quadVBO);
-	sample_on_bounding_sphere(nano_model, 200, sphereVAO, sphereVBO);
+	sample_on_bounding_sphere(nano_model, 1000, sphereVAO, sphereVBO, lineVAO, lineVBO);	
 
 	//Preparing texture framebuffer
 	GLuint texture_framebuffer, tex_color_buffer;
@@ -137,6 +143,7 @@ int main()
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;		
+		config_swap_timer += deltaTime;
 
 		process_input(window, camera);
 		camera.update(mouse.pitch, mouse.yaw);
@@ -163,7 +170,9 @@ int main()
 		draw_model(nano_model, shader_program, view, proj, model);
 
 		if(draw_sample_views)
-			draw_sample_points(sphereVAO, sphere_shader, view, proj, model);
+			draw_sample_views_func(sphereVAO, sphere_shader, view, proj, model);
+		if (draw_sample_rays)
+			draw_sample_ray_func(lineVAO, sphere_shader, view, proj, model);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -176,7 +185,7 @@ int main()
 	return 0;
 }
 
-void draw_sample_points(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
+void draw_sample_views_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
 						const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx)
 {
 	shader.use();
@@ -186,7 +195,19 @@ void draw_sample_points(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
 
 	glPointSize(5);
 	glBindVertexArray(VAO);
-	glDrawArrays(GL_POINTS, 0, 200);
+	glDrawArrays(GL_POINTS, 0, 1000);
+}
+
+void draw_sample_ray_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
+	const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx)
+{
+	shader.use();
+	shader.setMat4("view", view_mtx);
+	shader.setMat4("project", proj_mtx);
+	shader.setMat4("model", model_mtx);
+
+	glBindVertexArray(VAO);
+	glDrawArrays(GL_LINES, 0, 2000);
 }
 
 void setup_matrices(Camera camera, glm::mat4 & view_mtx, glm::mat4 & proj_mtx, glm::mat4 & model_mtx)
@@ -302,7 +323,27 @@ void get_texture_framebuffer(GLuint & texture_framebuffer, GLuint& tex_color_buf
 }
 
 
-void sample_on_bounding_sphere(Model model, int num_samples, GLuint & VAO, GLuint & VBO)
+void rays_from_point_to_center(GLuint & VAO, GLuint & VBO, glm::vec3 * points, const glm::vec3 & center, int num_samples)
+{
+	glm::vec3 * lines = new glm::vec3[num_samples * 2];
+	for (int i = 0; i < num_samples; i++)
+	{
+		lines[(i * 2) + 0] = points[i];
+		lines[(i * 2) + 1] = center;
+	}
+
+	glGenVertexArrays(1, &VAO);
+	glGenBuffers(1, &VBO);
+	glBindVertexArray(VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, num_samples * 2 * sizeof(glm::vec3), &(*lines), GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+
+	glBindVertexArray(0);
+}
+
+void sample_on_bounding_sphere(Model model, int num_samples, GLuint & VAO, GLuint & VBO, GLuint & lineVAO, GLuint & lineVBO)
 {	
 	float radius;
 	glm::vec3 center;
@@ -332,6 +373,8 @@ void sample_on_bounding_sphere(Model model, int num_samples, GLuint & VAO, GLuin
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
 	glBindVertexArray(0);
+
+	rays_from_point_to_center(lineVAO, lineVBO, points, center, num_samples);
 }
 
 void set_buffers_for_quad_render(GLuint & quadVAO, GLuint & quadVBO)
@@ -455,10 +498,16 @@ void process_input(GLFWwindow * window, Camera & camera)
 		draw_wireframe = true;
 	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_RELEASE)
 		draw_wireframe = false;
-	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
-		draw_sample_views = true;
-	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_RELEASE)
-		draw_sample_views = false;
+	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS && config_swap_timer > 0.2f)
+	{
+		draw_sample_views = !draw_sample_views;
+		config_swap_timer = 0.0f;
+	}
+	if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS && config_swap_timer > 0.2f)
+	{
+		draw_sample_rays = !draw_sample_rays;
+		config_swap_timer = 0.0f;
+	}
 }
 
 
