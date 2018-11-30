@@ -32,6 +32,7 @@ float lastFrame = 0.0f; // Time of last frame
 Mouse mouse(SCR_WIDTH/2, SCR_HEIGHT/2);
 
 bool draw_wireframe = false;
+bool draw_sample_views = false;
 
 /****************************\
 	Function declarations
@@ -76,7 +77,7 @@ void set_buffers_for_quad_render(GLuint & quadVAO, GLuint & quadVBO);
 
 /**
 Prepare uniformally distrubeted points on a sphere */
-void sample_on_sphere(int num_samples, GLuint & VAO, GLuint & VBO);
+void sample_on_bounding_sphere(Model model, int num_samples, GLuint & VAO, GLuint & VBO);
 
 /**
 */
@@ -116,10 +117,14 @@ int main()
 	//Preparing model to render
 	Model nano_model("D:\\Bjarni\\Projects\\3Dmodels\\nanosuit\\nanosuit.obj");
 	
+	glm::vec3 center;
+	float radius;
+	nano_model.get_bounding_sphere(center, radius);
+	
 	//Preparing other geometry
 	GLuint quadVAO, quadVBO, sphereVAO, sphereVBO;
 	set_buffers_for_quad_render(quadVAO, quadVBO);
-	sample_on_sphere(200, sphereVAO, sphereVBO);
+	sample_on_bounding_sphere(nano_model, 200, sphereVAO, sphereVBO);
 
 	//Preparing texture framebuffer
 	GLuint texture_framebuffer, tex_color_buffer;
@@ -156,7 +161,9 @@ int main()
 		
 		setup_matrices(camera, view, proj, model);		
 		draw_model(nano_model, shader_program, view, proj, model);
-		draw_sample_points(sphereVAO, sphere_shader, view, proj, model);
+
+		if(draw_sample_views)
+			draw_sample_points(sphereVAO, sphere_shader, view, proj, model);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -295,8 +302,12 @@ void get_texture_framebuffer(GLuint & texture_framebuffer, GLuint& tex_color_buf
 }
 
 
-void sample_on_sphere(int num_samples, GLuint & VAO, GLuint & VBO)
+void sample_on_bounding_sphere(Model model, int num_samples, GLuint & VAO, GLuint & VBO)
 {	
+	float radius;
+	glm::vec3 center;
+	model.get_bounding_sphere(center, radius);
+
 	float offset = 2. / num_samples;
 	float increment = M_PI * (3. - glm::sqrt(5.));
 
@@ -309,7 +320,7 @@ void sample_on_sphere(int num_samples, GLuint & VAO, GLuint & VBO)
 
 		float x = cos(phi) * r;
 		float z = sin(phi) * r;
-		points[i] = glm::vec3(x, y, z);
+		points[i] = center + glm::vec3(x, y, z) * radius;
 	}
 
 	glGenVertexArrays(1, &VAO);
@@ -444,6 +455,10 @@ void process_input(GLFWwindow * window, Camera & camera)
 		draw_wireframe = true;
 	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_RELEASE)
 		draw_wireframe = false;
+	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
+		draw_sample_views = true;
+	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_RELEASE)
+		draw_sample_views = false;
 }
 
 

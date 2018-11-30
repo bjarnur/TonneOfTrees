@@ -39,6 +39,8 @@ class Mesh {
 
 		void draw(Shader & shader);
 
+		void get_extreme_points(glm::vec3 & max_coords, glm::vec3 & min_coords);
+
 	private:
 
 		/*  Render data  */

@@ -11,6 +11,26 @@ Mesh::Mesh(	std::vector<Vertex> vertices,
 	setup_mesh();
 }
 
+void Mesh::get_extreme_points(glm::vec3 & max_coords, glm::vec3 & min_coords)
+{	
+	for (Vertex v : vertices)
+	{	
+		if (v.position.x < min_coords.x)
+			min_coords.x = v.position.x;
+		if (v.position.y < min_coords.y)
+			min_coords.y = v.position.y;
+		if (v.position.z < min_coords.z)
+			min_coords.z = v.position.z;
+
+		if (v.position.x > max_coords.x)
+			max_coords.x = v.position.x;
+		if (v.position.y > max_coords.y)
+			max_coords.y = v.position.y;
+		if (v.position.z > max_coords.z)
+			max_coords.z = v.position.z;
+	}
+}
+
 void Mesh::draw(Shader & shader)
 {
 	unsigned int diffuse_nr = 1;

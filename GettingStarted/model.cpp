@@ -177,3 +177,21 @@ unsigned int Model::texture_from_file(const char * name, std::string path)
 
 	return textureID;
 }
+
+void Model::get_bounding_sphere(glm::vec3 & center, float & radius)
+{
+	glm::vec3 min_coords(FLT_MAX, FLT_MAX, FLT_MAX);
+	glm::vec3 max_coords(-FLT_MAX, -FLT_MAX, -FLT_MAX);	
+	for (Mesh m : meshes)
+		m.get_extreme_points(max_coords, min_coords);
+
+	float avg_x = (max_coords.x + min_coords.x) / 2;
+	float avg_y = (max_coords.y + min_coords.y) / 2;
+	float avg_z = (max_coords.z + min_coords.z) / 2;
+	center = glm::vec3(avg_x, avg_y, avg_z);
+
+	float max_x = max_coords.x > abs(min_coords.x) ? max_coords.x : min_coords.x;
+	float max_y = max_coords.y > abs(min_coords.y) ? max_coords.y : min_coords.y;
+	float max_z = max_coords.z > abs(min_coords.z) ? max_coords.z : min_coords.z;
+	radius = glm::length(center - glm::vec3(max_x, max_y, max_z));
+}

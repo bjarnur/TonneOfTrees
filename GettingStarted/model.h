@@ -16,6 +16,7 @@ class Model
 		/*  Functions   */
 		Model(char *path);
 		void draw(Shader & shader);
+		void get_bounding_sphere(glm::vec3 & center, float & radius);
 	private:
 		/*  Model Data  */
 		std::string directory;
