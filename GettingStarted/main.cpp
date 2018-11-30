@@ -1,7 +1,10 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define _CRT_SECURE_NO_DEPRECATE
 
+#define _USE_MATH_DEFINES
+
 #include<iostream>
+#include <cmath>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -56,7 +59,7 @@ Callback function for capturing input from mouse */
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
 /**
-*/
+Called by framework when mouse wheel is scrolled */
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 
 /**
@@ -65,41 +68,31 @@ void texture_to_image(bool flip_image);
 
 /**
 Set's up frame buffer for rendering to texture */
-GLuint get_texture_framebuffer(GLuint& tex_color_buffer);
+void get_texture_framebuffer(GLuint & texture_framebuffer, GLuint& tex_color_buffer);
+
+/**
+Prepare a screen-coverin quad */
+void set_buffers_for_quad_render(GLuint & quadVAO, GLuint & quadVBO);
+
+/**
+Prepare uniformally distrubeted points on a sphere */
+void sample_on_sphere(int num_samples, GLuint & VAO, GLuint & VBO);
 
 /**
 */
-void set_buffers_for_quad_render(GLuint & quadVAO, GLuint & quadVBO);
+void setup_matrices(Camera camera, glm::mat4 & view, glm::mat4 & proj, glm::mat4 & model);
+
+void draw_model(Model nano_model, Shader shader_program, const glm::mat4 & view, 
+				const glm::mat4 & proj, const glm::mat4 & model);
+
+void draw_sample_points(GLuint sphereVAO, Shader sphere_shader, const glm::mat4 & view, 
+						const glm::mat4 & proj, const glm::mat4 & model);
+
 
 /******************************\
 	Function Definitions
 \******************************/
 
-void set_buffers_for_quad_render(GLuint & quadVAO, GLuint & quadVBO)
-{
-	float quadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
-							 // positions   // texCoords
-		-1.0f,  1.0f,  0.0f, 1.0f,
-		-1.0f, -1.0f,  0.0f, 0.0f,
-		1.0f, -1.0f,  1.0f, 0.0f,
-
-		-1.0f,  1.0f,  0.0f, 1.0f,
-		1.0f, -1.0f,  1.0f, 0.0f,
-		1.0f,  1.0f,  1.0f, 1.0f
-	};
-
-	glGenVertexArrays(1, &quadVAO);
-	glGenBuffers(1, &quadVBO);
-	glBindVertexArray(quadVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-
-	glBindVertexArray(0);
-}
 
 int main()
 {
@@ -115,21 +108,23 @@ int main()
 	//Configure shader program used by OpenGL
 	Shader shader_program = Shader("shaders\\vertex_shader.txt", "shaders\\fragment_shader.txt");
 	Shader screen_shader = Shader("shaders\\tex_vertex_shader.txt", "shaders\\tex_fragment_shader.txt");
-	screen_shader.use();
-	screen_shader.setInt("screenTexture", 0);
+	Shader sphere_shader = Shader("shaders\\sphere_vertex_shader.txt", "shaders\\sphere_fragment_shader.txt");
 
 	//Configure mouse attributes
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	
-	//Preparing models to render
-	GLuint quadVAO, quadVBO;
+	//Preparing model to render
+	Model nano_model("D:\\Bjarni\\Projects\\3Dmodels\\nanosuit\\nanosuit.obj");
+	
+	//Preparing other geometry
+	GLuint quadVAO, quadVBO, sphereVAO, sphereVBO;
 	set_buffers_for_quad_render(quadVAO, quadVBO);
-	Model nano_model("D:\\Bjarni\\Projects\\3Dmodels\\nanosuit\\nanosuit.obj");	
+	sample_on_sphere(200, sphereVAO, sphereVBO);
 
-	//Preparing texture
-	GLuint tex_color_buffer;
+	//Preparing texture framebuffer
+	GLuint texture_framebuffer, tex_color_buffer;
 	glGenTextures(1, &tex_color_buffer);
-	GLuint texture_framebuffer = get_texture_framebuffer(tex_color_buffer);
+	get_texture_framebuffer(texture_framebuffer, tex_color_buffer);
 
 	//Rendering loop
 	while (!glfwWindowShouldClose(window))
@@ -141,61 +136,79 @@ int main()
 		process_input(window, camera);
 		camera.update(mouse.pitch, mouse.yaw);
 
+		/*
 		//Setup for render to texture
 		glBindFramebuffer(GL_FRAMEBUFFER, texture_framebuffer);
 		glEnable(GL_DEPTH_TEST);
 		glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		shader_program.use();
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		
+		*/
 
-		//Setting up transformation matrices
-		glm::mat4 view = glm::lookAt(
-			camera.position,
-			camera.position + camera.front,
-			camera.up);
-		shader_program.setMat4("view", view);
-
-		glm::mat4 project = glm::perspective(
-			(float) glm::radians(mouse.fov),
-			(float)SCR_WIDTH / (float)SCR_HEIGHT,
-			0.1f, 100.0f);
-		shader_program.setMat4("project", project);
-
-		// render the loaded model
-		glm::mat4 model;
-		model = glm::translate(model, glm::vec3(0.0f, -1.75f, 0.0f)); // translate it down so it's at the center of the scene
-		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));	// it's a bit too big for our scene, so scale it down
-		shader_program.setMat4("model", model);
-		
-		nano_model.draw(shader_program);
-		
 		//Setup for render to window
-		glBindVertexArray(0);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glDisable(GL_DEPTH_TEST);
-		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		screen_shader.use();
+		glEnable(GL_DEPTH_TEST);
+		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		//Render a single quad
-		if(draw_wireframe)
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		else
-			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-		glBindVertexArray(quadVAO);		
-		glBindTexture(GL_TEXTURE_2D, tex_color_buffer);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glm::mat4 view;
+		glm::mat4 proj;
+		glm::mat4 model;
 		
+		setup_matrices(camera, view, proj, model);		
+		draw_model(nano_model, shader_program, view, proj, model);
+		draw_sample_points(sphereVAO, sphere_shader, view, proj, model);
+
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
 
 	//Save current state of the frame buffer texture
-	texture_to_image(true);
+	//texture_to_image(true);
 
 	glfwTerminate();
 	return 0;
+}
+
+void draw_sample_points(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
+						const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx)
+{
+	shader.use();
+	shader.setMat4("view", view_mtx);
+	shader.setMat4("project", proj_mtx);
+	shader.setMat4("model", model_mtx);
+
+	glPointSize(5);
+	glBindVertexArray(VAO);
+	glDrawArrays(GL_POINTS, 0, 200);
+}
+
+void setup_matrices(Camera camera, glm::mat4 & view_mtx, glm::mat4 & proj_mtx, glm::mat4 & model_mtx)
+{
+	view_mtx = glm::lookAt(
+		camera.position,
+		camera.position + camera.front,
+		camera.up);
+
+	proj_mtx = glm::perspective(
+		(float)glm::radians(mouse.fov),
+		(float)SCR_WIDTH / (float)SCR_HEIGHT,
+		0.1f, 100.0f);
+
+	//translate model down so it's at the center of the scene
+	model_mtx = glm::translate(model_mtx, glm::vec3(0.0f, -1.75f, 0.0f)); 
+	// it's a bit too big for our scene, so scale it down
+	model_mtx = glm::scale(model_mtx, glm::vec3(0.2f, 0.2f, 0.2f));	
+}
+
+void draw_model(Model model, Shader shader, const glm::mat4 & view_mtx, 
+				const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx)
+{
+	shader.use();
+	shader.setMat4("view", view_mtx);
+	shader.setMat4("project", proj_mtx);
+	shader.setMat4("model", model_mtx);
+
+	model.draw(shader);
 }
 
 void texture_to_image(bool flip_image)
@@ -249,11 +262,10 @@ void texture_to_image(bool flip_image)
 	fclose(output_image);
 }
 
-GLuint get_texture_framebuffer(GLuint& tex_color_buffer)
+void get_texture_framebuffer(GLuint & texture_framebuffer, GLuint& tex_color_buffer)
 {
-	unsigned int framebuffer;
-	glGenFramebuffers(1, &framebuffer);
-	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+	glGenFramebuffers(1, &texture_framebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, texture_framebuffer);
 	
 	// create a color attachment texture
 	glGenTextures(1, &tex_color_buffer);
@@ -280,8 +292,61 @@ GLuint get_texture_framebuffer(GLuint& tex_color_buffer)
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	
-	return framebuffer;
+}
+
+
+void sample_on_sphere(int num_samples, GLuint & VAO, GLuint & VBO)
+{	
+	float offset = 2. / num_samples;
+	float increment = M_PI * (3. - glm::sqrt(5.));
+
+	glm::vec3 * points = new glm::vec3[num_samples];
+	for (int i = 0; i < num_samples; i++)
+	{
+		float y = ((i * offset) - 1) * (3. - sqrt(5.));
+		float r = sqrt(1 - pow(y, 2));
+		float phi = ((i + 1) % num_samples) * increment;
+
+		float x = cos(phi) * r;
+		float z = sin(phi) * r;
+		points[i] = glm::vec3(x, y, z);
+	}
+
+	glGenVertexArrays(1, &VAO);
+	glGenBuffers(1, &VBO);
+	glBindVertexArray(VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, num_samples * sizeof(glm::vec3), &(*points), GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
+	glBindVertexArray(0);
+}
+
+void set_buffers_for_quad_render(GLuint & quadVAO, GLuint & quadVBO)
+{
+	float quadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+							 // positions   // texCoords
+		-1.0f,  1.0f,  0.0f, 1.0f,
+		-1.0f, -1.0f,  0.0f, 0.0f,
+		1.0f, -1.0f,  1.0f, 0.0f,
+
+		-1.0f,  1.0f,  0.0f, 1.0f,
+		1.0f, -1.0f,  1.0f, 0.0f,
+		1.0f,  1.0f,  1.0f, 1.0f
+	};
+
+	glGenVertexArrays(1, &quadVAO);
+	glGenBuffers(1, &quadVBO);
+	glBindVertexArray(quadVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+	glBindVertexArray(0);
 }
 
 GLFWwindow * initialize_window()
@@ -317,6 +382,11 @@ GLFWwindow * initialize_window()
 	glfwSetScrollCallback(window, scroll_callback);
 	
 	return window;
+}
+
+void load_geometry()
+{
+
 }
 
 unsigned int load_texture(const char * file_path, bool use_alpha)

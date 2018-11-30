@@ -135,6 +135,8 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="shaders\fragment_shader.txt" />
+    <Text Include="shaders\sphere_fragment_shader.txt" />
+    <Text Include="shaders\sphere_vertex_shader.txt" />
     <Text Include="shaders\tex_fragment_shader.txt" />
     <Text Include="shaders\tex_vertex_shader.txt" />
     <Text Include="shaders\vertex_shader.txt" />
