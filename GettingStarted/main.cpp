@@ -79,7 +79,7 @@ void set_buffers_for_quad_render(GLuint & quadVAO, GLuint & quadVBO);
 
 /**
 Prepare uniformally distrubeted points on the models bounding sphere */
-glm::vec3 * sample_on_bounding_sphere(Model model, int num_samples, GLuint & VAO, GLuint & VBO, GLuint & lineVAO, GLuint & lineVBO);
+glm::vec3 * generate_viewpoints_on_sphere(Model model, int num_samples, GLuint & VAO, GLuint & VBO, GLuint & lineVAO, GLuint & lineVBO);
 
 void rays_from_point_to_center(GLuint & VAO, GLuint & VBO, glm::vec3 * points, const glm::vec3 & center, int num_samples);
 
@@ -96,12 +96,10 @@ void draw_sample_views_func(GLuint sphereVAO, Shader sphere_shader, const glm::m
 void draw_sample_ray_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
 						const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx);
 
-void sample_from_points(GLuint framebuffer, Shader shader, Model model, GLuint texture,
-						glm::vec3 * points, glm::vec3 center, int num_samples, Camera backup, GLFWwindow * w);
+void sample_from_points(GLuint framebuffer, Shader shader, Model model, 
+						glm::vec3 * points, glm::vec3 model_center, int num_samples);
 
 
-void APIENTRY glDebugOutput(GLenum source, GLenum type, GLuint id, GLenum severity,
-	GLsizei length, const GLchar *message, void *userParam);
 /******************************\
 	Function Definitions
 \******************************/
@@ -127,16 +125,15 @@ int main()
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	
 	//Preparing model to render
+	float model_radius;
+	glm::vec3 model_center;	
 	Model nano_model("D:\\Bjarni\\Projects\\3Dmodels\\nanosuit\\nanosuit.obj");
-	
-	glm::vec3 center;
-	float radius;
-	nano_model.get_bounding_sphere(center, radius);
+	nano_model.get_bounding_sphere(model_center, model_radius);
 	
 	//Preparing other geometry
 	GLuint quadVAO, quadVBO, sphereVAO, sphereVBO, lineVAO, lineVBO;
 	set_buffers_for_quad_render(quadVAO, quadVBO);
-	glm::vec3 * points = sample_on_bounding_sphere(nano_model, 10, sphereVAO, sphereVBO, lineVAO, lineVBO);	
+	glm::vec3 * points = generate_viewpoints_on_sphere(nano_model, 10, sphereVAO, sphereVBO, lineVAO, lineVBO);	
 
 	//Preparing texture framebuffer
 	GLuint texture_framebuffer, tex_color_buffer;
@@ -144,7 +141,7 @@ int main()
 	get_texture_framebuffer(texture_framebuffer, tex_color_buffer);
 
 	//Generate sample images
-	sample_from_points(texture_framebuffer, shader_program, nano_model, tex_color_buffer, points, center, 10, camera, window);
+	sample_from_points(texture_framebuffer, shader_program, nano_model, points, model_center, 10);
 
 	//Rendering loop
 	while (!glfwWindowShouldClose(window))
@@ -157,14 +154,6 @@ int main()
 		process_input(window, camera);
 		camera.update(mouse.pitch, mouse.yaw);
 
-		/*
-		//Setup for render to texture
-		glBindFramebuffer(GL_FRAMEBUFFER, texture_framebuffer);
-		glEnable(GL_DEPTH_TEST);
-		glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		
-		*/
-
 		//Setup for render to window
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glEnable(GL_DEPTH_TEST);
@@ -173,20 +162,10 @@ int main()
 
 		glm::mat4 view;
 		glm::mat4 proj;
-		glm::mat4 model;
-		
+		glm::mat4 model;		
 		setup_matrices(camera, view, proj, model);
 
-		GLenum err;
-		while ((err = glGetError()) != GL_NO_ERROR)
-		{
-			std::cerr << "Before drawing model" << std::endl;
-		}
 		draw_model(nano_model, shader_program, view, proj, model);
-		while ((err = glGetError()) != GL_NO_ERROR)
-		{
-			std::cerr << "after drawing model" << std::endl;
-		}
 
 		if(draw_sample_views)
 			draw_sample_views_func(sphereVAO, sphere_shader, view, proj, model);
@@ -197,55 +176,39 @@ int main()
 		glfwPollEvents();
 	}
 
-	//Save current state of the frame buffer texture
-	//texture_to_image(true, 713, fra);
-
 	glfwTerminate();
 	return 0;
 }
 
-void sample_from_points(GLuint framebuffer, Shader shader, Model model, GLuint texture,
-						glm::vec3 * points, glm::vec3 center, int num_samples, Camera backup, GLFWwindow * window)
+void sample_from_points(GLuint framebuffer, Shader shader, Model model, 
+						glm::vec3 * points, glm::vec3 model_center, int num_samples)
 {	
 	for (int i = 0; i < num_samples; i++)
 	{		
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 		glEnable(GL_DEPTH_TEST);
-		glClearColor(0.0f, 0.0f, 0.5f, 1.0f);
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		
-		//glm::vec3 temp = points[i] - center;
-		glm::vec3 cameraDirection = glm::normalize(points[i] - center);
-		//glm::vec3 cameraRight = glm::normalize(glm::cross(cameraDirection, up));
-		//Camera cam(points[i], center, glm::normalize(glm::cross(cameraRight, cameraDirection)));
 
-		//Transform camera locations 
-		std::cout << "x: " << points[i].x << ", y: " << points[i].y << ", z: " << points[i].z << std::endl;
 		glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-		Camera cam(points[i], cameraDirection, up);
+		glm::mat4 camera_transform_mtx;
 		glm::mat4 view_mtx;
 		glm::mat4 proj_mtx;
-		glm::mat4 model_mtx;
-		//setup_matrices(cam, view_mtx, proj_mtx, model_mtx);
-
-		glm::mat4 temp;
-		temp = glm::translate(model_mtx, glm::vec3(0.0f, -1.75f, 0.0f));
-		temp = glm::scale(model_mtx, glm::vec3(0.2f, 0.2f, 0.2f));
-		glm::vec3 trans_camera_pos = temp * glm::vec4(points[i], 1.0);
-		glm::vec3 trans_center = temp * glm::vec4(center, 1.0);
-		glm::vec3 trans_dir = glm::normalize(trans_camera_pos - trans_center);
-		Camera transformed_camera(trans_camera_pos + trans_dir, trans_dir, up);
-		setup_matrices(transformed_camera, view_mtx, proj_mtx, model_mtx);
+		glm::mat4 model_mtx;		
 		
+		//Transform camera locations 		
+		camera_transform_mtx = glm::translate(model_mtx, glm::vec3(0.0f, -1.75f, 0.0f));
+		camera_transform_mtx = glm::scale(model_mtx, glm::vec3(0.2f, 0.2f, 0.2f));
+		glm::vec3 camera_pos = camera_transform_mtx * glm::vec4(points[i], 1.0);
+		glm::vec3 camera_target = camera_transform_mtx * glm::vec4(model_center, 1.0);
+		glm::vec3 camera_direction = glm::normalize(camera_pos - camera_target);
+		
+		//Render model to the framebuffer
+		//Camera transformed_camera(camera_pos + camera_direction, camera_direction, up);		
+		Camera transformed_camera(camera_pos, camera_direction, up);
+		setup_matrices(transformed_camera, view_mtx, proj_mtx, model_mtx);		
 		draw_model(model, shader, view_mtx, proj_mtx, model_mtx);
-		
-		GLenum err;
-		while ((err = glGetError()) != GL_NO_ERROR) {
-			std::cerr << "OpenGL error: " << err << std::endl;
-		}
-		
-		glfwSwapBuffers(window);
-		glfwPollEvents();
+
 		texture_to_image(true, i, framebuffer);
 	}
 }
@@ -289,10 +252,8 @@ void setup_matrices(Camera camera, glm::mat4 & view_mtx, glm::mat4 & proj_mtx, g
 
 	//translate model down so it's at the center of the scene
 	model_mtx = glm::translate(model_mtx, glm::vec3(0.0f, -1.75f, 0.0f)); 
-	//model_mtx = glm::translate(model_mtx, glm::vec3(0.0f, -5.f, 0.0f));
 	// it's a bit too big for our scene, so scale it down
 	model_mtx = glm::scale(model_mtx, glm::vec3(0.2f, 0.2f, 0.2f));	
-	//model_mtx = glm::scale(model_mtx, glm::vec3(0.5f, 0.5f, 0.5f));
 }
 
 void draw_model(Model model, Shader shader, const glm::mat4 & view_mtx, 
@@ -311,14 +272,10 @@ void texture_to_image(bool flip_image, int img_num, GLuint & dfb)
 	FILE *output_image;
 	int output_width = SCR_WIDTH;
 	int output_height = SCR_HEIGHT;
-	//std::vector<unsigned char>	pxls(output_width * output_height * 3);
-	unsigned char * pxls = new unsigned char[output_width * output_height * 3];
+	std::vector<unsigned char>	pxls(output_width * output_height * 3);	
 	
-	//glReadBuffer(GL_DEPTH_ATTACHMENT);
-
 	glReadBuffer(GL_COLOR_ATTACHMENT0);
-	//glReadPixels(0, 0, output_width, output_height, GL_RGB, GL_UNSIGNED_BYTE, &pxls[0]);
-	glGetTexImage(GL_TEXTURE_2D, 0, GL_UNSIGNED_BYTE, GL_RGB, pxls);
+	glReadPixels(0, 0, output_width, output_height, GL_RGB, GL_UNSIGNED_BYTE, &pxls[0]);
 
 	std::string file_name = "D:\\Bjarni\\Projects\\3Dmodels\\output " + std::to_string(img_num) + ".ppm";
 	output_image = fopen(file_name.c_str(), "wt");
@@ -380,36 +337,6 @@ void get_texture_framebuffer(GLuint & texture_framebuffer, GLuint& tex_color_buf
 	glBindRenderbuffer(GL_RENDERBUFFER, rbo);	
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, SCR_WIDTH, SCR_HEIGHT); // use a single renderbuffer object for both a depth AND stencil buffer.
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo); // now actually attach it
-	//glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT); // use a single renderbuffer object for both a depth AND stencil buffer.
-	//glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo); // now actually attach it
-
-	//TODO: attach an additional buffer here, will keep Z z^, alpha, and ambient occlusion
-	//The depth values can be altered in the vertex buffer, unclear about the others
-	//to begin with we can change the color one to include alpha, then compute alpha in vertex and save it as depth in fragment
-
-	/*
-	glGenTextures(1, &tex_color_buffer);
-	glBindTexture(GL_TEXTURE_2D, tex_color_buffer);
-
-	// Give an empty image to OpenGL ( the last "0" means "empty" )
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
-
-	// Poor filtering
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-	// The depth buffer
-	GLuint depthrenderbuffer;
-	glGenRenderbuffers(1, &depthrenderbuffer);
-	glBindRenderbuffer(GL_RENDERBUFFER, depthrenderbuffer);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
-
-	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, tex_color_buffer, 0);
-	GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
-	glDrawBuffers(1, DrawBuffers); */
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
@@ -438,7 +365,7 @@ void rays_from_point_to_center(GLuint & VAO, GLuint & VBO, glm::vec3 * points, c
 	glBindVertexArray(0);
 }
 
-glm::vec3 * sample_on_bounding_sphere(Model model, int num_samples, GLuint & VAO, GLuint & VBO, GLuint & lineVAO, GLuint & lineVBO)
+glm::vec3 * generate_viewpoints_on_sphere(Model model, int num_samples, GLuint & VAO, GLuint & VBO, GLuint & lineVAO, GLuint & lineVBO)
 {	
 	float radius;
 	glm::vec3 center;
@@ -466,9 +393,9 @@ glm::vec3 * sample_on_bounding_sphere(Model model, int num_samples, GLuint & VAO
 	glBufferData(GL_ARRAY_BUFFER, num_samples * sizeof(glm::vec3), &(*points), GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-
 	glBindVertexArray(0);
 
+	//Generate a visualization of the view-rays
 	rays_from_point_to_center(lineVAO, lineVBO, points, center, num_samples);
 
 	return points;
