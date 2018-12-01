@@ -18,6 +18,16 @@
 #include "model.h"
 #include "mouse_inputs.h"
 
+// The VBO containing the 4 vertices of the particles.
+static const GLfloat g_vertex_buffer_data[] = {
+	-1.f, -3.0f, 0.0f,
+	1.0f, -3.0f, 0.0f,
+	-1.0f, 17.0f, 0.0f,
+
+	1.0f, 17.0f, 0.0f,
+	1.0f, -3.0f, 0.0f,
+	-1.0f, 17.0f, 0.0f,
+};
 
 
 /*************************\
@@ -38,6 +48,8 @@ float config_swap_timer = 0.f;
 bool draw_wireframe = false;
 bool draw_sample_views = false;
 bool draw_sample_rays = false;
+bool draw_center_line = false;
+bool draw_center_plane = false;
 
 /****************************\
 	Function declarations
@@ -82,7 +94,9 @@ void set_buffers_for_quad_render(GLuint & quadVAO, GLuint & quadVBO);
 
 /**
 Prepare uniformally distrubeted points on the models bounding sphere */
-glm::vec3 * generate_viewpoints_on_sphere(Model model, int num_samples, GLuint & VAO, GLuint & VBO, GLuint & lineVAO, GLuint & lineVBO);
+glm::vec3 * generate_viewpoints_on_sphere(Model model, int num_samples, GLuint & VAO, GLuint & VBO, 
+										GLuint & lineVAO, GLuint & lineVBO, GLuint & centerVAO, GLuint & centerVBO,
+										GLuint & planeVAO, GLuint & planeVBO);
 
 void rays_from_point_to_center(GLuint & VAO, GLuint & VBO, glm::vec3 * points, const glm::vec3 & center, int num_samples);
 
@@ -98,6 +112,12 @@ void draw_sample_views_func(GLuint sphereVAO, Shader sphere_shader, const glm::m
 
 void draw_sample_ray_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
 						const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx);
+
+void draw_center_line_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
+						const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx);
+
+void draw_center_plane_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
+	const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx);
 
 void sample_from_points(GLuint framebuffer, Shader shader, Model model, 
 						glm::vec3 * points, glm::vec3 model_center, int num_samples);
@@ -122,7 +142,9 @@ int main()
 	//Configure shader program used by OpenGL
 	Shader shader_program = Shader("shaders\\vertex_shader.txt", "shaders\\fragment_shader.txt");
 	Shader screen_shader = Shader("shaders\\tex_vertex_shader.txt", "shaders\\tex_fragment_shader.txt");
-	Shader sphere_shader = Shader("shaders\\sphere_vertex_shader.txt", "shaders\\sphere_fragment_shader.txt");
+	Shader sphere_shader = Shader("shaders\\sphere_vertex_shader.txt", "shaders\\sphere_fragment_shader.txt");	
+	Shader billboard_shader = Shader("shaders\\billboard_vertex_shader.txt", "shaders\\sphere_fragment_shader.txt");
+
 
 	//Configure mouse attributes
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -134,9 +156,9 @@ int main()
 	nano_model.get_bounding_sphere(model_center, model_radius);
 	
 	//Preparing other geometry
-	GLuint quadVAO, quadVBO, sphereVAO, sphereVBO, lineVAO, lineVBO;
+	GLuint quadVAO, quadVBO, sphereVAO, sphereVBO, lineVAO, lineVBO, centerVAO, centerVBO, planeVAO, planeVBO;
 	set_buffers_for_quad_render(quadVAO, quadVBO);
-	glm::vec3 * points = generate_viewpoints_on_sphere(nano_model, 10, sphereVAO, sphereVBO, lineVAO, lineVBO);	
+	glm::vec3 * points = generate_viewpoints_on_sphere(nano_model, 10, sphereVAO, sphereVBO, lineVAO, lineVBO, centerVAO, centerVBO, planeVAO, planeVBO);
 
 	//Preparing texture framebuffer
 	GLuint texture_framebuffer, tex_color_buffer;
@@ -175,6 +197,10 @@ int main()
 			draw_sample_views_func(sphereVAO, sphere_shader, view, proj, model);
 		if (draw_sample_rays)
 			draw_sample_ray_func(lineVAO, sphere_shader, view, proj, model);
+		if(draw_center_line)
+			draw_center_line_func(centerVAO, sphere_shader, view, proj, model);
+		if(draw_center_plane)
+			draw_center_plane_func(planeVAO, billboard_shader, view,proj, model);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -241,6 +267,32 @@ void draw_sample_ray_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
 
 	glBindVertexArray(VAO);
 	glDrawArrays(GL_LINES, 0, 2000);
+}
+
+
+void draw_center_line_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
+	const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx)
+{
+	shader.use();
+	shader.setMat4("view", view_mtx);
+	shader.setMat4("project", proj_mtx);
+	shader.setMat4("model", model_mtx);
+
+	glBindVertexArray(VAO);
+	glDrawArrays(GL_LINES, 0, 2);
+}
+
+
+void draw_center_plane_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
+							const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx)
+{
+	shader.use();
+	shader.setMat4("view", view_mtx);
+	shader.setMat4("project", proj_mtx);
+	shader.setMat4("model", model_mtx);
+
+	glBindVertexArray(VAO);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 void setup_matrices(Camera camera, glm::mat4 & view_mtx, glm::mat4 & proj_mtx, glm::mat4 & model_mtx)
@@ -368,7 +420,10 @@ void rays_from_point_to_center(GLuint & VAO, GLuint & VBO, glm::vec3 * points, c
 	glBindVertexArray(0);
 }
 
-glm::vec3 * generate_viewpoints_on_sphere(Model model, int num_samples, GLuint & VAO, GLuint & VBO, GLuint & lineVAO, GLuint & lineVBO)
+glm::vec3 * generate_viewpoints_on_sphere(	Model model, int num_samples, GLuint & VAO, 
+											GLuint & VBO, GLuint & lineVAO, GLuint & lineVBO,
+											GLuint & centerVAO, GLuint & centerVBO,
+											GLuint & planeVAO, GLuint & planeVBO)
 {	
 	float radius;
 	glm::vec3 center;
@@ -400,6 +455,28 @@ glm::vec3 * generate_viewpoints_on_sphere(Model model, int num_samples, GLuint &
 
 	//Generate a visualization of the view-rays
 	rays_from_point_to_center(lineVAO, lineVBO, points, center, num_samples);
+
+	glm::vec3 * centerLine = new glm::vec3[2];
+	centerLine[0] = center + glm::vec3(0, 200, 0);
+	centerLine[1] = center + glm::vec3(0, -200, 0);
+
+	glGenVertexArrays(1, &centerVAO);
+	glGenBuffers(1, &centerVBO);
+	glBindVertexArray(centerVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, centerVBO);
+	glBufferData(GL_ARRAY_BUFFER, 2 * sizeof(glm::vec3), &(*centerLine), GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+	glBindVertexArray(0);
+
+	glGenVertexArrays(1, &planeVAO);
+	glGenBuffers(1, &planeVBO);
+	glBindVertexArray(planeVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, planeVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glBindVertexArray(0);
 
 	return points;
 }
@@ -529,11 +606,21 @@ void process_input(GLFWwindow * window, Camera & camera)
 		draw_sample_views = !draw_sample_views;
 		config_swap_timer = 0.0f;
 	}
-	if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS && config_swap_timer > 0.f)
+	if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS && config_swap_timer > 0.2f)
 	{
 		draw_sample_rays = !draw_sample_rays;
 		config_swap_timer = 0.0f;
 	}
+	if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS && config_swap_timer > 0.2f)
+	{
+		draw_center_line = !draw_center_line;
+		config_swap_timer = 0.0f;
+	}	
+	if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS && config_swap_timer > 0.2f)
+	{
+		draw_center_plane = !draw_center_plane;
+		config_swap_timer = 0.0f;
+	}	
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)

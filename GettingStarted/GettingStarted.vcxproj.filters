@@ -76,5 +76,8 @@
     <Text Include="shaders\sphere_vertex_shader.txt">
       <Filter>Resource Files\Shaders</Filter>
     </Text>
+    <Text Include="shaders\billboard_vertex_shader.txt">
+      <Filter>Resource Files\Shaders</Filter>
+    </Text>
   </ItemGroup>
 </Project>
