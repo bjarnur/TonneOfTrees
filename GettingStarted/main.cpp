@@ -26,6 +26,9 @@
 
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
+const unsigned int TEX_WIDTH = 256;
+const unsigned int TEX_HEIGHT = 256;
+
 
 float deltaTime = 0.0f;	// Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
@@ -159,6 +162,7 @@ int main()
 		glEnable(GL_DEPTH_TEST);
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
 		glm::mat4 view;
 		glm::mat4 proj;
@@ -187,8 +191,9 @@ void sample_from_points(GLuint framebuffer, Shader shader, Model model,
 	{		
 		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 		glEnable(GL_DEPTH_TEST);
-		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		glClearColor(0.0f, 0.0f, 0.5f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glViewport(0, 0, TEX_WIDTH, TEX_HEIGHT);
 
 		glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 		glm::mat4 camera_transform_mtx;
@@ -270,32 +275,30 @@ void draw_model(Model model, Shader shader, const glm::mat4 & view_mtx,
 void texture_to_image(bool flip_image, int img_num, GLuint & dfb)
 {
 	FILE *output_image;
-	int output_width = SCR_WIDTH;
-	int output_height = SCR_HEIGHT;
-	std::vector<unsigned char>	pxls(output_width * output_height * 3);	
+	std::vector<unsigned char>	pxls(TEX_WIDTH * TEX_HEIGHT * 3);	
 	
 	glReadBuffer(GL_COLOR_ATTACHMENT0);
-	glReadPixels(0, 0, output_width, output_height, GL_RGB, GL_UNSIGNED_BYTE, &pxls[0]);
+	glReadPixels(0, 0, TEX_WIDTH, TEX_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, &pxls[0]);
 
 	std::string file_name = "D:\\Bjarni\\Projects\\3Dmodels\\output " + std::to_string(img_num) + ".ppm";
 	output_image = fopen(file_name.c_str(), "wt");
 	fprintf(output_image, "P3\n");
 	fprintf(output_image, "# Created by brgud\n");
-	fprintf(output_image, "%d %d\n", output_width, output_height);
+	fprintf(output_image, "%d %d\n", TEX_WIDTH, TEX_HEIGHT);
 	fprintf(output_image, "255\n");
 
-	std::vector<unsigned char> flipped(output_width * output_height * 3);
-	for (int i = 0; i < output_height; i++)
+	std::vector<unsigned char> flipped(TEX_WIDTH * TEX_HEIGHT * 3);
+	for (int i = 0; i < TEX_HEIGHT; i++)
 	{
-		memcpy(&flipped[i * output_width * 3],						// address of destination
-			&pxls[(output_height - i - 1) * output_width * 3],		// address of source
-			output_width * 3 * sizeof(unsigned char));				// number of bytes to copy
+		memcpy(&flipped[i * TEX_WIDTH * 3],						// address of destination
+			&pxls[(TEX_HEIGHT - i - 1) * TEX_WIDTH * 3],		// address of source
+			TEX_WIDTH * 3 * sizeof(unsigned char));				// number of bytes to copy
 	}
 
 	int k = 0;
-	for (int i = 0; i<output_width; i++)
+	for (int i = 0; i<TEX_WIDTH; i++)
 	{
-		for (int j = 0; j<output_height; j++)
+		for (int j = 0; j<TEX_HEIGHT; j++)
 		{
 			if (flip_image)
 			{
@@ -326,7 +329,7 @@ void get_texture_framebuffer(GLuint & texture_framebuffer, GLuint& tex_color_buf
 	// create a color attachment texture
 	glGenTextures(1, &tex_color_buffer);
 	glBindTexture(GL_TEXTURE_2D, tex_color_buffer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex_color_buffer, 0);
@@ -335,7 +338,7 @@ void get_texture_framebuffer(GLuint & texture_framebuffer, GLuint& tex_color_buf
 	unsigned int rbo;
 	glGenRenderbuffers(1, &rbo);
 	glBindRenderbuffer(GL_RENDERBUFFER, rbo);	
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, SCR_WIDTH, SCR_HEIGHT); // use a single renderbuffer object for both a depth AND stencil buffer.
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, 256, 256); // use a single renderbuffer object for both a depth AND stencil buffer.
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo); // now actually attach it
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -466,11 +469,6 @@ GLFWwindow * initialize_window()
 	return window;
 }
 
-void load_geometry()
-{
-
-}
-
 unsigned int load_texture(const char * file_path, bool use_alpha)
 {
 	unsigned char * data;
@@ -537,7 +535,6 @@ void process_input(GLFWwindow * window, Camera & camera)
 		config_swap_timer = 0.0f;
 	}
 }
-
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
