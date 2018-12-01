@@ -6,9 +6,10 @@ Camera::Camera(glm::vec3 camera_position, glm::vec3 camera_target, glm::vec3 wor
 		:position(camera_position), target(camera_target), world_up(world_up), 
 		front(glm::vec3(0.0, 0.0, -1.0f)) 
 {
-	glm::vec3 direction = glm::normalize(camera_position - camera_target);
-	right = glm::normalize(glm::cross(up, direction));
+	glm::vec3 direction = glm::normalize(camera_target - camera_position);
+	right = glm::normalize(glm::cross(world_up, direction));
 	up = glm::cross(direction, right);
+	front = direction;
 }
 
 void Camera::update(float pitch, float yaw)
