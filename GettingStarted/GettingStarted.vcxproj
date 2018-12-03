@@ -135,6 +135,7 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="shaders\billboard_vertex_shader.txt" />
+    <Text Include="shaders\blue_fragment_shader.txt" />
     <Text Include="shaders\fragment_shader.txt" />
     <Text Include="shaders\preprocess_frag_shader.txt" />
     <Text Include="shaders\preprocess_vert_shader.txt" />

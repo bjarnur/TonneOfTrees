@@ -85,5 +85,8 @@
     <Text Include="shaders\preprocess_frag_shader.txt">
       <Filter>Resource Files\Shaders</Filter>
     </Text>
+    <Text Include="shaders\blue_fragment_shader.txt">
+      <Filter>Resource Files\Shaders</Filter>
+    </Text>
   </ItemGroup>
 </Project>

@@ -148,9 +148,9 @@ int main()
 	Shader shader_program = Shader("shaders\\vertex_shader.txt", "shaders\\fragment_shader.txt");
 	Shader screen_shader = Shader("shaders\\tex_vertex_shader.txt", "shaders\\tex_fragment_shader.txt");
 	Shader sphere_shader = Shader("shaders\\sphere_vertex_shader.txt", "shaders\\sphere_fragment_shader.txt");
+	Shader blue_shader = Shader("shaders\\sphere_vertex_shader.txt", "shaders\\blue_fragment_shader.txt");
 	Shader preprocess_shader = Shader("shaders\\preprocess_vert_shader.txt", "shaders\\preprocess_frag_shader.txt");
 	Shader billboard_shader = Shader("shaders\\billboard_vertex_shader.txt", "shaders\\sphere_fragment_shader.txt");
-
 
 	//Configure mouse attributes
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -196,6 +196,7 @@ int main()
 		glm::mat4 proj;
 		glm::mat4 model;		
 		setup_matrices(camera, view, proj, model);
+
 		if (draw_depth)
 			draw_model_depth(nano_model, preprocess_shader, view, proj, model, model_center, camera.front);
 		else
@@ -206,7 +207,7 @@ int main()
 		if (draw_sample_rays)
 			draw_sample_ray_func(lineVAO, sphere_shader, view, proj, model);
 		if(draw_center_line)
-			draw_center_line_func(centerVAO, sphere_shader, view, proj, model);
+			draw_center_line_func(centerVAO, blue_shader, view, proj, model);
 		if(draw_center_plane)
 			draw_center_plane_func(planeVAO, billboard_shader, view,proj, model);
 
@@ -248,7 +249,7 @@ void sample_from_points(GLuint framebuffer, Shader shader, Shader prepr_shader, 
 		setup_matrices(transformed_camera, view_mtx, proj_mtx, model_mtx);		
 
 		if(draw_depth)
-			draw_model_depth(model, prepr_shader, view_mtx, proj_mtx, model_mtx, model_center, transformed_camera.front);
+			draw_model_depth(model, prepr_shader, view_mtx, proj_mtx, model_mtx, camera_target, transformed_camera.front);
 		else
 			draw_model(model, shader, view_mtx, proj_mtx, model_mtx);
 
@@ -291,7 +292,7 @@ void draw_center_line_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx
 	shader.setMat4("model", model_mtx);
 
 	glBindVertexArray(VAO);
-	glDrawArrays(GL_LINES, 0, 2);
+	glDrawArrays(GL_LINES, 0, 6);
 }
 
 
@@ -345,7 +346,7 @@ void draw_model_depth(Model model, Shader shader, const glm::mat4 & view_mtx,
 	shader.setMat4("project", proj_mtx);
 	shader.setMat4("model", model_mtx);
 
-	shader.setVec3("model_centrer", model_center);
+	shader.setVec3("model_center", model_center);
 	shader.setVec3("camera_forward", cam_forward);
 
 	model.draw(shader);
@@ -483,17 +484,21 @@ glm::vec3 * generate_viewpoints_on_sphere(	Model model, int num_samples, GLuint 
 	//Generate a visualization of the view-rays
 	rays_from_point_to_center(lineVAO, lineVBO, points, center, num_samples);
 
-	glm::vec3 * centerLine = new glm::vec3[2];
+	glm::vec3 * centerLine = new glm::vec3[6];
 	centerLine[0] = center + glm::vec3(0, 200, 0);
 	centerLine[1] = center + glm::vec3(0, -200, 0);
+	centerLine[2] = center + glm::vec3(200, 0, 0);
+	centerLine[3] = center + glm::vec3(-200, 0, 0);
+	centerLine[4] = center + glm::vec3(0, 0, 200);
+	centerLine[5] = center + glm::vec3(0, 0, -200);
 
 	glGenVertexArrays(1, &centerVAO);
 	glGenBuffers(1, &centerVBO);
 	glBindVertexArray(centerVAO);
 	glBindBuffer(GL_ARRAY_BUFFER, centerVBO);
-	glBufferData(GL_ARRAY_BUFFER, 2 * sizeof(glm::vec3), &(*centerLine), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(glm::vec3), &(*centerLine), GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glBindVertexArray(0);
 
 	glGenVertexArrays(1, &planeVAO);
