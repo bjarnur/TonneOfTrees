@@ -79,5 +79,11 @@
     <Text Include="shaders\billboard_vertex_shader.txt">
       <Filter>Resource Files\Shaders</Filter>
     </Text>
+    <Text Include="shaders\preprocess_vert_shader.txt">
+      <Filter>Resource Files\Shaders</Filter>
+    </Text>
+    <Text Include="shaders\preprocess_frag_shader.txt">
+      <Filter>Resource Files\Shaders</Filter>
+    </Text>
   </ItemGroup>
 </Project>

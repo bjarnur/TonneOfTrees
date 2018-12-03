@@ -20,13 +20,13 @@
 
 // The VBO containing the 4 vertices of the particles.
 static const GLfloat g_vertex_buffer_data[] = {
-	-1.f, -3.0f, 0.0f,
-	1.0f, -3.0f, 0.0f,
-	-1.0f, 17.0f, 0.0f,
+	-1.f, -0.2f, 0.0f,
+	1.0f, -0.2f, 0.0f,
+	-1.0f, 3.3f, 0.0f,
 
-	1.0f, 17.0f, 0.0f,
-	1.0f, -3.0f, 0.0f,
-	-1.0f, 17.0f, 0.0f,
+	1.0f, 3.3f, 0.0f,
+	1.0f, -0.2f, 0.0f,
+	-1.0f, 3.3f, 0.0f,
 };
 
 
@@ -50,6 +50,7 @@ bool draw_sample_views = false;
 bool draw_sample_rays = false;
 bool draw_center_line = false;
 bool draw_center_plane = false;
+bool draw_depth = false;
 
 /****************************\
 	Function declarations
@@ -104,8 +105,12 @@ void rays_from_point_to_center(GLuint & VAO, GLuint & VBO, glm::vec3 * points, c
 */
 void setup_matrices(Camera camera, glm::mat4 & view, glm::mat4 & proj, glm::mat4 & model);
 
-void draw_model(Model nano_model, Shader shader_program, const glm::mat4 & view, 
-				const glm::mat4 & proj, const glm::mat4 & model);
+void draw_model(Model model, Shader shader, const glm::mat4 & view_mtx,
+	const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx);
+
+void draw_model_depth(Model model, Shader shader, const glm::mat4 & view_mtx,
+	const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx,
+	const glm::vec3 & model_center, const glm::vec3 & cam_forward);
 
 void draw_sample_views_func(GLuint sphereVAO, Shader sphere_shader, const glm::mat4 & view, 
 						const glm::mat4 & proj, const glm::mat4 & model);
@@ -119,8 +124,8 @@ void draw_center_line_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx
 void draw_center_plane_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
 	const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx);
 
-void sample_from_points(GLuint framebuffer, Shader shader, Model model, 
-						glm::vec3 * points, glm::vec3 model_center, int num_samples);
+void sample_from_points(GLuint framebuffer, Shader shader, Shader prepr_shader, Model model,
+	glm::vec3 * points, glm::vec3 model_center, int num_samples);
 
 
 /******************************\
@@ -142,7 +147,8 @@ int main()
 	//Configure shader program used by OpenGL
 	Shader shader_program = Shader("shaders\\vertex_shader.txt", "shaders\\fragment_shader.txt");
 	Shader screen_shader = Shader("shaders\\tex_vertex_shader.txt", "shaders\\tex_fragment_shader.txt");
-	Shader sphere_shader = Shader("shaders\\sphere_vertex_shader.txt", "shaders\\sphere_fragment_shader.txt");	
+	Shader sphere_shader = Shader("shaders\\sphere_vertex_shader.txt", "shaders\\sphere_fragment_shader.txt");
+	Shader preprocess_shader = Shader("shaders\\preprocess_vert_shader.txt", "shaders\\preprocess_frag_shader.txt");
 	Shader billboard_shader = Shader("shaders\\billboard_vertex_shader.txt", "shaders\\sphere_fragment_shader.txt");
 
 
@@ -166,7 +172,7 @@ int main()
 	get_texture_framebuffer(texture_framebuffer, tex_color_buffer);
 
 	//Generate sample images
-	sample_from_points(texture_framebuffer, shader_program, nano_model, points, model_center, 10);
+	sample_from_points(texture_framebuffer, shader_program, preprocess_shader, nano_model, points, model_center, 10);
 
 	//Rendering loop
 	while (!glfwWindowShouldClose(window))
@@ -190,8 +196,10 @@ int main()
 		glm::mat4 proj;
 		glm::mat4 model;		
 		setup_matrices(camera, view, proj, model);
-
-		draw_model(nano_model, shader_program, view, proj, model);
+		if (draw_depth)
+			draw_model_depth(nano_model, preprocess_shader, view, proj, model, model_center, camera.front);
+		else
+			draw_model(nano_model, shader_program, view, proj, model);
 
 		if(draw_sample_views)
 			draw_sample_views_func(sphereVAO, sphere_shader, view, proj, model);
@@ -210,7 +218,7 @@ int main()
 	return 0;
 }
 
-void sample_from_points(GLuint framebuffer, Shader shader, Model model, 
+void sample_from_points(GLuint framebuffer, Shader shader, Shader prepr_shader, Model model, 
 						glm::vec3 * points, glm::vec3 model_center, int num_samples)
 {	
 	for (int i = 0; i < num_samples; i++)
@@ -238,7 +246,11 @@ void sample_from_points(GLuint framebuffer, Shader shader, Model model,
 		//Camera transformed_camera(camera_pos + camera_direction, camera_direction, up);		
 		Camera transformed_camera(camera_pos, camera_direction, up);
 		setup_matrices(transformed_camera, view_mtx, proj_mtx, model_mtx);		
-		draw_model(model, shader, view_mtx, proj_mtx, model_mtx);
+
+		if(draw_depth)
+			draw_model_depth(model, prepr_shader, view_mtx, proj_mtx, model_mtx, model_center, transformed_camera.front);
+		else
+			draw_model(model, shader, view_mtx, proj_mtx, model_mtx);
 
 		texture_to_image(true, i, framebuffer);
 	}
@@ -313,13 +325,28 @@ void setup_matrices(Camera camera, glm::mat4 & view_mtx, glm::mat4 & proj_mtx, g
 	model_mtx = glm::scale(model_mtx, glm::vec3(0.2f, 0.2f, 0.2f));	
 }
 
-void draw_model(Model model, Shader shader, const glm::mat4 & view_mtx, 
-				const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx)
+void draw_model(Model model, Shader shader, const glm::mat4 & view_mtx,
+	const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx)
 {
 	shader.use();
 	shader.setMat4("view", view_mtx);
 	shader.setMat4("project", proj_mtx);
 	shader.setMat4("model", model_mtx);
+
+	model.draw(shader);
+}
+
+void draw_model_depth(Model model, Shader shader, const glm::mat4 & view_mtx, 
+				const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx,
+				const glm::vec3 & model_center, const glm::vec3 & cam_forward)
+{
+	shader.use();
+	shader.setMat4("view", view_mtx);
+	shader.setMat4("project", proj_mtx);
+	shader.setMat4("model", model_mtx);
+
+	shader.setVec3("model_centrer", model_center);
+	shader.setVec3("camera_forward", cam_forward);
 
 	model.draw(shader);
 }
@@ -597,10 +624,13 @@ void process_input(GLFWwindow * window, Camera & camera)
 		camera.position -= glm::normalize(glm::cross(camera.front, camera.up)) * cameraSpeed;
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		camera.position += glm::normalize(glm::cross(camera.front, camera.up)) * cameraSpeed;
-	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
-		draw_wireframe = true;
-	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_RELEASE)
-		draw_wireframe = false;
+
+	//Rendering options
+	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS && config_swap_timer > 0.2f)
+	{
+		draw_depth = !draw_depth;
+		config_swap_timer = 0.0f;
+	}
 	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS && config_swap_timer > 0.2f)
 	{
 		draw_sample_views = !draw_sample_views;

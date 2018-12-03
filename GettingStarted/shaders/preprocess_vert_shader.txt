@@ -1,0 +1,35 @@
+#version 330 core
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aNormal;
+layout (location = 2) in vec2 aTexCoords;
+
+out vec2 TexCoords;
+out float distance;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 project;
+
+uniform vec3 model_center;
+uniform vec3 camera_forward;
+
+uniform float normalizer;
+
+void main()
+{
+    TexCoords = aTexCoords;    
+    gl_Position = project * view * model * vec4(aPos, 1.0);
+
+	//Compute distance from current fragment to center plane
+	float d = dot(camera_forward, model_center);
+	distance = abs((dot(camera_forward, aPos) - d)/ dot(camera_forward, camera_forward));
+}
+
+/*
+float distnacePointPlane(const Point &q, const Plane &p) 
+{
+    float dist = (dotProduct(p.n, q) - p.d) / dotProduct(p.n, p.n);
+ 
+    return dist;
+}
+*/
