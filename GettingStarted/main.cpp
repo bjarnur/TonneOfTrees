@@ -20,13 +20,13 @@
 
 // The VBO containing the 4 vertices of the particles.
 static const GLfloat g_vertex_buffer_data[] = {
-	-1.f, -0.2f, 0.0f,
-	1.0f, -0.2f, 0.0f,
-	-1.0f, 3.3f, 0.0f,
+	-1.f, -2.0f, 0.0f,
+	1.0f, -2.0f, 0.0f,
+	-1.0f, 1.6f, 0.0f,
 
-	1.0f, 3.3f, 0.0f,
-	1.0f, -0.2f, 0.0f,
-	-1.0f, 3.3f, 0.0f,
+	1.0f, 1.6f, 0.0f,
+	1.0f, -2.0f, 0.0f,
+	-1.0f, 1.6f, 0.0f,
 };
 
 
@@ -122,7 +122,7 @@ void draw_center_line_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx
 						const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx);
 
 void draw_center_plane_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
-	const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx);
+	const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx, glm::vec3 & model_center);
 
 void sample_from_points(GLuint framebuffer, Shader shader, Shader prepr_shader, Model model,
 	glm::vec3 * points, glm::vec3 model_center, int num_samples);
@@ -209,7 +209,7 @@ int main()
 		if(draw_center_line)
 			draw_center_line_func(centerVAO, blue_shader, view, proj, model);
 		if(draw_center_plane)
-			draw_center_plane_func(planeVAO, billboard_shader, view,proj, model);
+			draw_center_plane_func(planeVAO, billboard_shader, view,proj, model, model_center);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -226,7 +226,7 @@ void sample_from_points(GLuint framebuffer, Shader shader, Shader prepr_shader, 
 	{		
 		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 		glEnable(GL_DEPTH_TEST);
-		glClearColor(0.0f, 0.0f, 0.5f, 0.0f);
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glViewport(0, 0, TEX_WIDTH, TEX_HEIGHT);
 
@@ -248,10 +248,13 @@ void sample_from_points(GLuint framebuffer, Shader shader, Shader prepr_shader, 
 		Camera transformed_camera(camera_pos, camera_direction, up);
 		setup_matrices(transformed_camera, view_mtx, proj_mtx, model_mtx);		
 
+		/*
 		if(draw_depth)
 			draw_model_depth(model, prepr_shader, view_mtx, proj_mtx, model_mtx, camera_target, transformed_camera.front);
 		else
 			draw_model(model, shader, view_mtx, proj_mtx, model_mtx);
+		*/
+		draw_model_depth(model, prepr_shader, view_mtx, proj_mtx, model_mtx, camera_target, transformed_camera.front);
 
 		texture_to_image(true, i, framebuffer);
 	}
@@ -297,12 +300,14 @@ void draw_center_line_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx
 
 
 void draw_center_plane_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
-							const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx)
+							const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx, glm::vec3 & model_center)
 {
+	glm::mat4 identity(1.0);
+
 	shader.use();
 	shader.setMat4("view", view_mtx);
 	shader.setMat4("project", proj_mtx);
-	shader.setMat4("model", model_mtx);
+	shader.setMat4("model", identity);
 
 	glBindVertexArray(VAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
