@@ -18,7 +18,7 @@
 #include "model.h"
 #include "mouse_inputs.h"
 
-// The VBO containing the 4 vertices of the particles.
+//Hardcoded plane used to help show model center
 static const GLfloat g_vertex_buffer_data[] = {
 	-1.f, -2.0f, 0.0f,
 	1.0f, -2.0f, 0.0f,
@@ -38,6 +38,7 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 const unsigned int TEX_WIDTH = 256;
 const unsigned int TEX_HEIGHT = 256;
+const unsigned int NUM_SAMPLES = 50;
 
 
 float deltaTime = 0.0f;	// Time between current frame and last frame
@@ -99,34 +100,44 @@ glm::vec3 * generate_viewpoints_on_sphere(Model model, int num_samples, GLuint &
 										GLuint & lineVAO, GLuint & lineVBO, GLuint & centerVAO, GLuint & centerVBO,
 										GLuint & planeVAO, GLuint & planeVBO);
 
+/**
+Sets up a visualization of view rays from camera positions to camera targets */
 void rays_from_point_to_center(GLuint & VAO, GLuint & VBO, glm::vec3 * points, const glm::vec3 & center, int num_samples);
 
 /**
-*/
+Set up model, view and projection matrices for rendering model */
 void setup_matrices(Camera camera, glm::mat4 & view, glm::mat4 & proj, glm::mat4 & model);
 
+/**
+Render model using the provided textures */
 void draw_model(Model model, Shader shader, const glm::mat4 & view_mtx,
 	const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx);
 
+/**
+Render model using fragment distance from center plane */
 void draw_model_depth(Model model, Shader shader, const glm::mat4 & view_mtx,
 	const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx,
 	const glm::vec3 & model_center, const glm::vec3 & cam_forward);
 
-void draw_sample_views_func(GLuint sphereVAO, Shader sphere_shader, const glm::mat4 & view, 
-						const glm::mat4 & proj, const glm::mat4 & model);
-
-void draw_sample_ray_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
-						const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx);
-
-void draw_center_line_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
-						const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx);
-
-void draw_center_plane_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
-	const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx, glm::vec3 & model_center);
-
+/**
+Take a snapshot of model from the specified camera position */
 void sample_from_points(GLuint framebuffer, Shader shader, Shader prepr_shader, Model model,
 	glm::vec3 * points, glm::vec3 model_center, int num_samples);
 
+/*	
+				Functions used for various visualizations 
+*/
+void draw_sample_views_func(GLuint sphereVAO, Shader sphere_shader, const glm::mat4 & view, 
+						const glm::mat4 & proj, const glm::mat4 & model);
+void draw_sample_ray_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
+						const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx);
+void draw_center_line_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
+						const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx);
+void draw_center_plane_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
+	const glm::mat4 & proj_mtx, const glm::mat4 & model_mtx, glm::vec3 & model_center);
+/*
+				Visualization functions end
+*/
 
 /******************************\
 	Function Definitions
@@ -164,7 +175,7 @@ int main()
 	//Preparing other geometry
 	GLuint quadVAO, quadVBO, sphereVAO, sphereVBO, lineVAO, lineVBO, centerVAO, centerVBO, planeVAO, planeVBO;
 	set_buffers_for_quad_render(quadVAO, quadVBO);
-	glm::vec3 * points = generate_viewpoints_on_sphere(nano_model, 10, sphereVAO, sphereVBO, lineVAO, lineVBO, centerVAO, centerVBO, planeVAO, planeVBO);
+	glm::vec3 * points = generate_viewpoints_on_sphere(nano_model, NUM_SAMPLES, sphereVAO, sphereVBO, lineVAO, lineVBO, centerVAO, centerVBO, planeVAO, planeVBO);
 
 	//Preparing texture framebuffer
 	GLuint texture_framebuffer, tex_color_buffer;
@@ -172,7 +183,7 @@ int main()
 	get_texture_framebuffer(texture_framebuffer, tex_color_buffer);
 
 	//Generate sample images
-	sample_from_points(texture_framebuffer, shader_program, preprocess_shader, nano_model, points, model_center, 10);
+	sample_from_points(texture_framebuffer, shader_program, preprocess_shader, nano_model, points, model_center, NUM_SAMPLES);
 
 	//Rendering loop
 	while (!glfwWindowShouldClose(window))
@@ -270,7 +281,7 @@ void draw_sample_views_func(GLuint VAO, Shader shader, const glm::mat4 & view_mt
 
 	glPointSize(5);
 	glBindVertexArray(VAO);
-	glDrawArrays(GL_POINTS, 0, 10);
+	glDrawArrays(GL_POINTS, 0, NUM_SAMPLES);
 }
 
 void draw_sample_ray_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
