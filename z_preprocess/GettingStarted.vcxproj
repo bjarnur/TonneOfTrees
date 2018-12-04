@@ -20,8 +20,9 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{0AE05079-AED0-45DD-B95E-FC36B00E7ECF}</ProjectGuid>
-    <RootNamespace>GettingStarted</RootNamespace>
+    <RootNamespace>z_preprocess</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <ProjectName>z_preprocess</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -71,13 +72,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <IncludePath>D:\Programs\assimp-3.3.1\assimp\include;D:\Program Files\C++\Libraries\glm;D:\Program Files\C++\Libraries\glad\include;D:\Program Files\C++\Libraries\glfw-3.2.1.bin.WIN32\include;$(IncludePath)</IncludePath>
     <LibraryPath>D:\Programs\assimp-3.3.1\assimp\lib;D:\Program Files\C++\Libraries\glfw-3.2.1.bin.WIN32\lib-vc2015;$(LibraryPath)</LibraryPath>
-    <SourcePath>D:\Bjarni\Projects\Graphics\LearnOpenGL\GettingStarted\GettingStarted\source;$(SourcePath)</SourcePath>
+    <SourcePath>D:\Bjarni\Projects\KTH_Projects\AT18\project\TonneOfTrees\GettingStarted;$(SourcePath)</SourcePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalDependencies>assimp-vc140-mt.lib;opengl32.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
