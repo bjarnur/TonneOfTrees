@@ -5,6 +5,8 @@
 
 #include<iostream>
 #include <cmath>
+#include <map>
+#include <algorithm>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -39,7 +41,7 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 const unsigned int TEX_WIDTH = 256;
 const unsigned int TEX_HEIGHT = 256;
-const unsigned int NUM_SAMPLES = 1;
+const unsigned int NUM_SAMPLES = 200;
 
 
 float deltaTime = 0.0f;	// Time between current frame and last frame
@@ -54,6 +56,10 @@ bool draw_center_line = false;
 bool draw_center_plane = false;
 bool draw_depth = false;
 int selected_scene = 0;
+
+float * available_distances;
+std::map<float, GLuint> view_distance_map;
+glm::vec3 world_forward(0, 0, 1);
 
 /****************************\
 	Function declarations
@@ -90,7 +96,7 @@ void texture_to_image(bool flip_image, int img_num, GLuint & fb);
 
 /**
 Set's up frame buffer for rendering to texture */
-void get_texture_framebuffer(GLuint & texture_framebuffer, GLuint& tex_color_buffer);
+void get_texture_framebuffer(GLuint & texture_framebuffer, GLuint * textures);
 
 /**
 Prepare a screen-coverin quad */
@@ -123,8 +129,12 @@ void draw_model_depth(Model model, Shader shader, const glm::mat4 & view_mtx,
 
 /**
 Take a snapshot of model from the specified camera position */
-void sample_from_points(GLuint framebuffer, Shader shader, Shader prepr_shader, Model model,
-	glm::vec3 * points, glm::vec3 model_center, int num_samples);
+void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Shader prepr_shader,
+	Model model, glm::vec3 * points, glm::vec3 model_center, int num_samples);
+
+/**
+*/
+GLuint get_closest_texture(float distance, int low, int high);
 
 /*	
 				Functions used for various visualizations 
@@ -165,6 +175,7 @@ int main()
 	Shader preprocess_shader = Shader("shaders\\preprocess_vert_shader.txt", "shaders\\preprocess_frag_shader.txt");
 	Shader billboard_shader = Shader("shaders\\billboard_vertex_shader.txt", "shaders\\sphere_fragment_shader.txt");
 	Shader passthrough_shader = Shader("shaders\\passthrough_vert_shader.txt", "shaders\\sphere_fragment_shader.txt");
+	Shader proxy_shader = Shader("shaders\\billboard_vertex_shader.txt", "shaders\\tex_fragment_shader.txt");
 
 	//Configure mouse attributes
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -181,12 +192,13 @@ int main()
 	glm::vec3 * points = generate_viewpoints_on_sphere(nano_model, NUM_SAMPLES, sphereVAO, sphereVBO, lineVAO, lineVBO, centerVAO, centerVBO, planeVAO, planeVBO);
 
 	//Preparing texture framebuffer
-	GLuint texture_framebuffer, tex_color_buffer;
-	glGenTextures(1, &tex_color_buffer);
-	get_texture_framebuffer(texture_framebuffer, tex_color_buffer);
+	GLuint texture_framebuffer;	
+	GLuint * textures = new GLuint[NUM_SAMPLES];	
+	available_distances = new float[NUM_SAMPLES];
+	get_texture_framebuffer(texture_framebuffer, textures);
 
 	//Generate sample images
-	sample_from_points(texture_framebuffer, shader_program, preprocess_shader, nano_model, points, model_center, NUM_SAMPLES);
+	sample_from_points(texture_framebuffer, textures, shader_program, preprocess_shader, nano_model, points, model_center, NUM_SAMPLES);
 
 	//WORK IN PROGRESS
 	glm::vec3 pos1(0, 0, 0);
@@ -238,9 +250,21 @@ int main()
 		}
 		if (selected_scene == 1)
 		{
-			s1.draw(billboard_shader, view, proj);
-			s2.draw(billboard_shader, view, proj);
-			s3.draw(billboard_shader, view, proj);
+			//float dist = glm::distance(world_forward, camera.front);
+			float dist; 
+			GLuint best_fit; 
+
+			dist = glm::distance(world_forward, glm::normalize(camera.position - s1.position));
+			best_fit = get_closest_texture(dist, 0, NUM_SAMPLES);
+			s1.draw(proxy_shader, best_fit, view, proj);
+
+			dist = glm::distance(world_forward, glm::normalize(camera.position - s2.position));
+			best_fit = get_closest_texture(dist, 0, NUM_SAMPLES);
+			s2.draw(proxy_shader, best_fit, view, proj);
+
+			dist = glm::distance(world_forward, glm::normalize(camera.position - s3.position));
+			best_fit = get_closest_texture(dist, 0, NUM_SAMPLES);
+			s3.draw(proxy_shader, best_fit, view, proj);
 		}
 
 		glfwSwapBuffers(window);
@@ -251,12 +275,13 @@ int main()
 	return 0;
 }
 
-void sample_from_points(GLuint framebuffer, Shader shader, Shader prepr_shader, Model model, 
-						glm::vec3 * points, glm::vec3 model_center, int num_samples)
+void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Shader prepr_shader, 
+						Model model, glm::vec3 * points, glm::vec3 model_center, int num_samples)
 {	
 	for (int i = 0; i < num_samples; i++)
 	{		
 		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textures[i], 0);
 		glEnable(GL_DEPTH_TEST);
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -289,6 +314,58 @@ void sample_from_points(GLuint framebuffer, Shader shader, Shader prepr_shader, 
 		draw_model_depth(model, prepr_shader, view_mtx, proj_mtx, model_mtx, camera_target, transformed_camera.front);
 
 		texture_to_image(true, i, framebuffer);
+
+		//WORK IN PROGRESS
+		float dist = glm::distance(world_forward, camera_direction);
+		view_distance_map.insert({dist, textures[i]});
+		available_distances[i] = dist;
+	}
+	std::sort(available_distances, available_distances + NUM_SAMPLES);
+	int foo = 1;
+}
+
+GLuint get_closest_texture(float distance, int low, int high)
+{
+	//Base case 1: edge value
+	if (high < low)
+	{
+		if (high < 0)
+			return view_distance_map[available_distances[0]];
+		else
+			return view_distance_map[available_distances[NUM_SAMPLES - 1]];
+	}
+
+	int mid = (low + high) / 2;
+
+	//Baes case 2: found optimal
+	if (available_distances[mid - 1] < distance && available_distances[mid] > distance)
+	{
+		float diff1 = abs(available_distances[mid - 1] - distance);
+		float diff2 = abs(available_distances[mid] - distance);
+		
+		if (diff1 < diff2)
+			return view_distance_map[available_distances[mid - 1]];
+		else
+			return view_distance_map[available_distances[mid]];
+	}
+	if (available_distances[mid] < distance && available_distances[mid + 1] > distance)
+	{
+		float diff1 = abs(available_distances[mid + 1] - distance);
+		float diff2 = abs(available_distances[mid] - distance);
+
+		if (diff1 < diff2)
+			return view_distance_map[available_distances[mid + 1]];
+		else
+			return view_distance_map[available_distances[mid]];
+	}
+
+	if (distance < available_distances[mid])
+	{
+		return get_closest_texture(distance, low, mid - 1);;
+	}
+	else
+	{
+		return get_closest_texture(distance, mid + 1, high);
 	}
 }
 
@@ -438,20 +515,25 @@ void texture_to_image(bool flip_image, int img_num, GLuint & dfb)
 	fclose(output_image);
 }
 
-void get_texture_framebuffer(GLuint & texture_framebuffer, GLuint& tex_color_buffer)
+void get_texture_framebuffer(GLuint & texture_framebuffer, GLuint * textures)
 {
 	glGenFramebuffers(1, &texture_framebuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, texture_framebuffer);
 	
-	// create a color attachment texture
-	glGenTextures(1, &tex_color_buffer);
-	glBindTexture(GL_TEXTURE_2D, tex_color_buffer);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex_color_buffer, 0);
+	//Generate textures
+	glGenTextures(NUM_SAMPLES, textures);
+	for (int i = 0; i < NUM_SAMPLES; i++)
+	{
+		glBindTexture(GL_TEXTURE_2D, textures[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	}
 	
-	// create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
+	//The first texture is default for the frame buffer
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textures[0], 0);
+	
+	//Generate and attach render buffer object
 	unsigned int rbo;
 	glGenRenderbuffers(1, &rbo);
 	glBindRenderbuffer(GL_RENDERBUFFER, rbo);	

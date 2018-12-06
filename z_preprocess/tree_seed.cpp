@@ -17,7 +17,9 @@ void Seed::setup_mesh()
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertex_buffer_data), quad_vertex_buffer_data, GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 	glBindVertexArray(0);
 }
 
@@ -33,14 +35,16 @@ glm::mat4 Seed::get_model_mtx()
 	return model_mtx;
 }
 
-void Seed::draw(Shader shader, const glm::mat4 & view_mtx, const glm::mat4 & proj_mtx)
+void Seed::draw(Shader shader, GLuint texture, const glm::mat4 & view_mtx, const glm::mat4 & proj_mtx)
 {
 	shader.use();
 	shader.setMat4("view", view_mtx);
 	shader.setMat4("project", proj_mtx);
 	shader.setMat4("model", get_model_mtx());
-
+	
 	glBindVertexArray(VAO);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texture);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	glBindVertexArray(0);
 }
