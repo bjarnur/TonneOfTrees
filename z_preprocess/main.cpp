@@ -16,6 +16,7 @@
 
 #include "camera.h"
 #include "model.h"
+#include "tree_seed.h"
 #include "mouse_inputs.h"
 
 //Hardcoded plane used to help show model center
@@ -38,7 +39,7 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 const unsigned int TEX_WIDTH = 256;
 const unsigned int TEX_HEIGHT = 256;
-const unsigned int NUM_SAMPLES = 50;
+const unsigned int NUM_SAMPLES = 1;
 
 
 float deltaTime = 0.0f;	// Time between current frame and last frame
@@ -52,6 +53,7 @@ bool draw_sample_rays = false;
 bool draw_center_line = false;
 bool draw_center_plane = false;
 bool draw_depth = false;
+int selected_scene = 0;
 
 /****************************\
 	Function declarations
@@ -162,6 +164,7 @@ int main()
 	Shader blue_shader = Shader("shaders\\sphere_vertex_shader.txt", "shaders\\blue_fragment_shader.txt");
 	Shader preprocess_shader = Shader("shaders\\preprocess_vert_shader.txt", "shaders\\preprocess_frag_shader.txt");
 	Shader billboard_shader = Shader("shaders\\billboard_vertex_shader.txt", "shaders\\sphere_fragment_shader.txt");
+	Shader passthrough_shader = Shader("shaders\\passthrough_vert_shader.txt", "shaders\\sphere_fragment_shader.txt");
 
 	//Configure mouse attributes
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -184,6 +187,15 @@ int main()
 
 	//Generate sample images
 	sample_from_points(texture_framebuffer, shader_program, preprocess_shader, nano_model, points, model_center, NUM_SAMPLES);
+
+	//WORK IN PROGRESS
+	glm::vec3 pos1(0, 0, 0);
+	glm::vec3 pos2(-5, 0, -10);
+	glm::vec3 pos3(5, 0, -20);
+	glm::vec3 rot(0, 0, 0);
+	Seed s1(pos1, rot);
+	Seed s2(pos2, rot);
+	Seed s3(pos3, rot);
 
 	//Rendering loop
 	while (!glfwWindowShouldClose(window))
@@ -208,19 +220,28 @@ int main()
 		glm::mat4 model;		
 		setup_matrices(camera, view, proj, model);
 
-		if (draw_depth)
-			draw_model_depth(nano_model, preprocess_shader, view, proj, model, model_center, camera.front);
-		else
-			draw_model(nano_model, shader_program, view, proj, model);
+		if(selected_scene == 0)
+		{
+			if (draw_depth)
+				draw_model_depth(nano_model, preprocess_shader, view, proj, model, model_center, camera.front);
+			else
+				draw_model(nano_model, shader_program, view, proj, model);
 
-		if(draw_sample_views)
-			draw_sample_views_func(sphereVAO, sphere_shader, view, proj, model);
-		if (draw_sample_rays)
-			draw_sample_ray_func(lineVAO, sphere_shader, view, proj, model);
-		if(draw_center_line)
-			draw_center_line_func(centerVAO, blue_shader, view, proj, model);
-		if(draw_center_plane)
-			draw_center_plane_func(planeVAO, billboard_shader, view,proj, model, model_center);
+			if(draw_sample_views)
+				draw_sample_views_func(sphereVAO, sphere_shader, view, proj, model);
+			if (draw_sample_rays)
+				draw_sample_ray_func(lineVAO, sphere_shader, view, proj, model);
+			if(draw_center_line)
+				draw_center_line_func(centerVAO, blue_shader, view, proj, model);
+			if(draw_center_plane)
+				draw_center_plane_func(planeVAO, billboard_shader, view,proj, model, model_center);
+		}
+		if (selected_scene == 1)
+		{
+			s1.draw(billboard_shader, view, proj);
+			s2.draw(billboard_shader, view, proj);
+			s3.draw(billboard_shader, view, proj);
+		}
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -645,6 +666,12 @@ void process_input(GLFWwindow * window, Camera & camera)
 		camera.position -= glm::normalize(glm::cross(camera.front, camera.up)) * cameraSpeed;
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		camera.position += glm::normalize(glm::cross(camera.front, camera.up)) * cameraSpeed;
+
+	//Scene options
+	if (glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS)
+		selected_scene = 0;
+	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+		selected_scene = 1;
 
 	//Rendering options
 	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS && config_swap_timer > 0.2f)

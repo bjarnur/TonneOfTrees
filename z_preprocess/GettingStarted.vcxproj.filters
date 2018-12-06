@@ -36,6 +36,9 @@
     <ClCompile Include="model.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="tree_seed.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shader.h">
@@ -54,6 +57,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="model.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tree_seed.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -86,6 +92,9 @@
       <Filter>Resource Files\Shaders</Filter>
     </Text>
     <Text Include="shaders\blue_fragment_shader.txt">
+      <Filter>Resource Files\Shaders</Filter>
+    </Text>
+    <Text Include="shaders\passthrough_vert_shader.txt">
       <Filter>Resource Files\Shaders</Filter>
     </Text>
   </ItemGroup>
