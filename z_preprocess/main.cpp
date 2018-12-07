@@ -41,7 +41,7 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 const unsigned int TEX_WIDTH = 256;
 const unsigned int TEX_HEIGHT = 256;
-const unsigned int NUM_SAMPLES = 200;
+const unsigned int NUM_SAMPLES = 400;
 
 
 float deltaTime = 0.0f;	// Time between current frame and last frame
@@ -312,7 +312,7 @@ void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Sh
 		else
 			draw_model(model, shader, view_mtx, proj_mtx, model_mtx);
 		*/
-		draw_model_depth(model, prepr_shader, view_mtx, proj_mtx, model_mtx, camera_target, transformed_camera.front);
+		draw_model(model, shader, view_mtx, proj_mtx, model_mtx);
 
 		texture_to_image(true, i, framebuffer);
 
@@ -495,7 +495,7 @@ void get_texture_framebuffer(GLuint & texture_framebuffer, GLuint * textures)
 	for (int i = 0; i < NUM_SAMPLES; i++)
 	{
 		glBindTexture(GL_TEXTURE_2D, textures[i]);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	}
