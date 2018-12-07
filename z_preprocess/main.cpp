@@ -57,9 +57,7 @@ bool draw_center_plane = false;
 bool draw_depth = false;
 int selected_scene = 0;
 
-float * available_distances;
-std::map<float, GLuint> view_distance_map;
-glm::vec3 world_forward(0, 0, 1);
+glm::vec3 * sample_points;
 
 /****************************\
 	Function declarations
@@ -133,8 +131,8 @@ void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Sh
 	Model model, glm::vec3 * points, glm::vec3 model_center, int num_samples);
 
 /**
-*/
-GLuint get_closest_texture(float distance, int low, int high);
+Returns the sample point that's closes to the provided point */
+int get_nearest_neighbors(glm::vec3 pos);
 
 /*	
 				Functions used for various visualizations 
@@ -150,6 +148,7 @@ void draw_center_plane_func(GLuint VAO, Shader shader, const glm::mat4 & view_mt
 /*
 				Visualization functions end
 */
+
 
 /******************************\
 	Function Definitions
@@ -194,7 +193,6 @@ int main()
 	//Preparing texture framebuffer
 	GLuint texture_framebuffer;	
 	GLuint * textures = new GLuint[NUM_SAMPLES];	
-	available_distances = new float[NUM_SAMPLES];
 	get_texture_framebuffer(texture_framebuffer, textures);
 
 	//Generate sample images
@@ -250,21 +248,23 @@ int main()
 		}
 		if (selected_scene == 1)
 		{
-			//float dist = glm::distance(world_forward, camera.front);
-			float dist; 
-			GLuint best_fit; 
+			GLuint texture;
+			glm::vec3 relative_pos;
 
-			dist = glm::distance(world_forward, glm::normalize(camera.position - s1.position));
-			best_fit = get_closest_texture(dist, 0, NUM_SAMPLES);
-			s1.draw(proxy_shader, best_fit, view, proj);
+			//relative_pos = glm::normalize(s1.position + camera.position);
+			relative_pos = glm::normalize(camera.position - s1.position);
+			texture = textures[get_nearest_neighbors(relative_pos)];
+			s1.draw(proxy_shader, texture, view, proj);
+			
+			//relative_pos = glm::normalize(s2.position + camera.position);
+			relative_pos = glm::normalize(camera.position - s2.position);
+			texture = textures[get_nearest_neighbors(relative_pos)];
+			s2.draw(proxy_shader, texture, view, proj);
 
-			dist = glm::distance(world_forward, glm::normalize(camera.position - s2.position));
-			best_fit = get_closest_texture(dist, 0, NUM_SAMPLES);
-			s2.draw(proxy_shader, best_fit, view, proj);
-
-			dist = glm::distance(world_forward, glm::normalize(camera.position - s3.position));
-			best_fit = get_closest_texture(dist, 0, NUM_SAMPLES);
-			s3.draw(proxy_shader, best_fit, view, proj);
+			//relative_pos = glm::normalize(s2.position + camera.position);
+			relative_pos = glm::normalize(camera.position - s3.position);
+			texture = textures[get_nearest_neighbors(relative_pos)];
+			s3.draw(proxy_shader, texture, view, proj);			
 		}
 
 		glfwSwapBuffers(window);
@@ -278,6 +278,7 @@ int main()
 void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Shader prepr_shader, 
 						Model model, glm::vec3 * points, glm::vec3 model_center, int num_samples)
 {	
+	sample_points = new glm::vec3[NUM_SAMPLES];
 	for (int i = 0; i < num_samples; i++)
 	{		
 		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
@@ -315,58 +316,27 @@ void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Sh
 
 		texture_to_image(true, i, framebuffer);
 
-		//WORK IN PROGRESS
-		float dist = glm::distance(world_forward, camera_direction);
-		view_distance_map.insert({dist, textures[i]});
-		available_distances[i] = dist;
+		
+		//glm::vec3 relative_pos = glm::normalize(model_center + points[i]);		
+		glm::vec3 relative_pos = glm::normalize(points[i] - model_center);
+		sample_points[i] = relative_pos;
 	}
-	std::sort(available_distances, available_distances + NUM_SAMPLES);
-	int foo = 1;
 }
 
-GLuint get_closest_texture(float distance, int low, int high)
+//TODO currently just returns one, need to return three
+int get_nearest_neighbors(glm::vec3 pos)
 {
-	//Base case 1: edge value
-	if (high < low)
+	int idx = -1;
+	float best = FLT_MAX;
+	for (int i = 0; i < NUM_SAMPLES; i++)
 	{
-		if (high < 0)
-			return view_distance_map[available_distances[0]];
-		else
-			return view_distance_map[available_distances[NUM_SAMPLES - 1]];
+		if (glm::distance(sample_points[i], pos) < best)
+		{
+			best = glm::distance(sample_points[i], pos);
+			idx = i;
+		}
 	}
-
-	int mid = (low + high) / 2;
-
-	//Baes case 2: found optimal
-	if (available_distances[mid - 1] < distance && available_distances[mid] > distance)
-	{
-		float diff1 = abs(available_distances[mid - 1] - distance);
-		float diff2 = abs(available_distances[mid] - distance);
-		
-		if (diff1 < diff2)
-			return view_distance_map[available_distances[mid - 1]];
-		else
-			return view_distance_map[available_distances[mid]];
-	}
-	if (available_distances[mid] < distance && available_distances[mid + 1] > distance)
-	{
-		float diff1 = abs(available_distances[mid + 1] - distance);
-		float diff2 = abs(available_distances[mid] - distance);
-
-		if (diff1 < diff2)
-			return view_distance_map[available_distances[mid + 1]];
-		else
-			return view_distance_map[available_distances[mid]];
-	}
-
-	if (distance < available_distances[mid])
-	{
-		return get_closest_texture(distance, low, mid - 1);;
-	}
-	else
-	{
-		return get_closest_texture(distance, mid + 1, high);
-	}
+	return idx;
 }
 
 void draw_sample_views_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
