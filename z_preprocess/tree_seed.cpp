@@ -35,16 +35,47 @@ glm::mat4 Seed::get_model_mtx()
 	return model_mtx;
 }
 
-void Seed::draw(Shader shader, GLuint texture, const glm::mat4 & view_mtx, const glm::mat4 & proj_mtx)
+void Seed::draw(Shader shader, GLuint * textures, float * distances, const glm::mat4 & view_mtx, const glm::mat4 & proj_mtx)
 {
+	//Normalize weights
+	std::cout << "w1: " << distances[0] << " , w2: " << distances[1] << ", w3: " << distances[2] << std::endl;
+	float sum = 0.0f;
+	for (int i = 0; i < 3; i++)
+	{
+		sum += distances[i];
+	}
+	for (int i = 0; i < 3; i++)
+	{
+		distances[i] = sum - distances[i];
+	}
+	sum = 0.0f;
+	for (int i = 0; i < 3; i++)
+	{
+		sum += distances[i];
+	}
+	for (int i = 0; i < 3; i++)
+	{
+		distances[i] /= sum;
+	}
+
 	shader.use();
 	shader.setMat4("view", view_mtx);
 	shader.setMat4("project", proj_mtx);
 	shader.setMat4("model", get_model_mtx());
+	shader.setVec3("weights", glm::vec3(distances[0], distances[1], distances[2]));
 	
-	glBindVertexArray(VAO);
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
+	glBindTexture(GL_TEXTURE_2D, textures[0]);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, textures[1]);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, textures[2]);
+
+	shader.setInt("screenTexture1", 0); // or with shader class
+	shader.setInt("screenTexture2", 1); // or with shader class
+	shader.setInt("screenTexture3", 2); // or with shader class
+
+	glBindVertexArray(VAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	glBindVertexArray(0);
 }

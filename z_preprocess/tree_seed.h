@@ -24,7 +24,7 @@ class Seed
 	public:
 		//Functions
 		Seed(glm::vec3 position, glm::vec3 rotation);
-		void draw(Shader shader, GLuint texture, const glm::mat4 & view_mtx, const glm::mat4 & proj_mtx);
+		void draw(Shader shader, GLuint * textures, float * distances, const glm::mat4 & view_mtx, const glm::mat4 & proj_mtx);
 
 		//Variables
 		glm::vec3 position;

@@ -41,7 +41,7 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 const unsigned int TEX_WIDTH = 256;
 const unsigned int TEX_HEIGHT = 256;
-const unsigned int NUM_SAMPLES = 400;
+const unsigned int NUM_SAMPLES = 200;
 
 
 float deltaTime = 0.0f;	// Time between current frame and last frame
@@ -131,8 +131,8 @@ void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Sh
 	Model model, glm::vec3 * points, glm::vec3 model_center, int num_samples);
 
 /**
-Returns the sample point that's closes to the provided point */
-int get_nearest_neighbors(glm::vec3 pos);
+Returns the sample points that's closes to the provided point */
+void get_nearest_neighbors(glm::vec3 pos, GLuint * textures, GLuint * nns, float * distances, int num);
 
 /*	
 				Functions used for various visualizations 
@@ -252,10 +252,21 @@ int main()
 			glm::vec3 relative_pos;
 
 			//relative_pos = glm::normalize(s1.position + camera.position);
-			relative_pos = glm::normalize(camera.position - s1.position);
-			texture = textures[get_nearest_neighbors(relative_pos)];
-			s1.draw(proxy_shader, texture, view, proj);
 			
+			GLuint * nns = new GLuint[3];
+			float * distances = new float[3];
+			for (int i = 0; i < 3; i++)
+				distances[i] = FLT_MAX;
+
+			relative_pos = glm::normalize(camera.position - s1.position);			
+			get_nearest_neighbors(relative_pos, textures, nns, distances, 3);
+			s1.draw(proxy_shader, nns, distances, view, proj);
+
+			for (int i = 0; i < 3; i++)
+				std::cout << "tex: " << nns[i] << " "; 
+			std::cout << std::endl;
+			
+			/*
 			//relative_pos = glm::normalize(s2.position + camera.position);
 			relative_pos = glm::normalize(camera.position - s2.position);
 			texture = textures[get_nearest_neighbors(relative_pos)];
@@ -265,6 +276,7 @@ int main()
 			relative_pos = glm::normalize(camera.position - s3.position);
 			texture = textures[get_nearest_neighbors(relative_pos)];
 			s3.draw(proxy_shader, texture, view, proj);			
+			*/
 		}
 
 		glfwSwapBuffers(window);
@@ -312,7 +324,7 @@ void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Sh
 		else
 			draw_model(model, shader, view_mtx, proj_mtx, model_mtx);
 		*/
-		draw_model(model, shader, view_mtx, proj_mtx, model_mtx);
+		draw_model_depth(model, prepr_shader, view_mtx, proj_mtx, model_mtx, camera_target, transformed_camera.front);
 
 		texture_to_image(true, i, framebuffer);
 
@@ -323,20 +335,27 @@ void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Sh
 	}
 }
 
-//TODO currently just returns one, need to return three
-int get_nearest_neighbors(glm::vec3 pos)
+void get_nearest_neighbors(glm::vec3 pos, GLuint * textures, GLuint * nns, float * distances, int num)
 {
-	int idx = -1;
-	float best = FLT_MAX;
 	for (int i = 0; i < NUM_SAMPLES; i++)
 	{
-		if (glm::distance(sample_points[i], pos) < best)
-		{
-			best = glm::distance(sample_points[i], pos);
-			idx = i;
-		}
+		float dist = glm::distance(sample_points[i], pos);
+		for (int j = 0; j < num; j++)
+		{			
+			if (dist < distances[j])
+			{
+				for(int k = num - 1; k > j; k--)
+				{
+					nns[k] = nns[k - 1];
+					distances[k] = distances[k - 1];
+				}
+
+				nns[j] = textures[i];
+				distances[j] = dist;
+				break;
+			}
+		}		
 	}
-	return idx;
 }
 
 void draw_sample_views_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,

@@ -3,12 +3,20 @@ out vec4 FragColor;
   
 in vec2 TexCoords;
 
-uniform sampler2D screenTexture;
+uniform vec3 weights;
+uniform sampler2D screenTexture1;
+uniform sampler2D screenTexture2;
+uniform sampler2D screenTexture3;
 
 void main()
 { 
-    vec4 texColor = texture(screenTexture, TexCoords);
-	if(texColor.a == 0.0)
+    vec4 texColor1 = texture(screenTexture1, TexCoords);
+	vec4 texColor2 = texture(screenTexture2, TexCoords);
+	vec4 texColor3 = texture(screenTexture3, TexCoords);
+	vec4 texColor = (texColor1 * weights.x) + (texColor2 * weights.y) + (texColor3 * weights.z);
+
+	if(texColor.a < 0.1)
 		discard;
+
 	FragColor = texColor;
 }
