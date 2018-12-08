@@ -15,7 +15,8 @@ void main()
 	vec4 texColor3 = texture(screenTexture3, TexCoords);
 	vec4 texColor = (texColor1 * weights.x) + (texColor2 * weights.y) + (texColor3 * weights.z);
 
-	if(texColor.a < 0.1)
+	//Why is this hack necessary?? Using only alpha discards some fragments that shouldn't be transparent!?
+	if(texColor.r == 0.0 && texColor.g == 0.0 && texColor.b == 0.0 && texColor.a == 0.0)
 		discard;
 
 	FragColor = texColor;

@@ -41,7 +41,7 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 const unsigned int TEX_WIDTH = 256;
 const unsigned int TEX_HEIGHT = 256;
-const unsigned int NUM_SAMPLES = 200;
+const unsigned int NUM_SAMPLES = 400;
 
 
 float deltaTime = 0.0f;	// Time between current frame and last frame
@@ -250,33 +250,29 @@ int main()
 		{
 			GLuint texture;
 			glm::vec3 relative_pos;
-
-			//relative_pos = glm::normalize(s1.position + camera.position);
 			
 			GLuint * nns = new GLuint[3];
 			float * distances = new float[3];
 			for (int i = 0; i < 3; i++)
 				distances[i] = FLT_MAX;
 
-			relative_pos = glm::normalize(camera.position - s1.position);			
+			//relative_pos = glm::normalize(camera.position - s1.position);			
+			relative_pos = glm::normalize(-camera.front);
 			get_nearest_neighbors(relative_pos, textures, nns, distances, 3);
 			s1.draw(proxy_shader, nns, distances, view, proj);
 
-			for (int i = 0; i < 3; i++)
-				std::cout << "tex: " << nns[i] << " "; 
-			std::cout << std::endl;
 			
-			/*
 			//relative_pos = glm::normalize(s2.position + camera.position);
-			relative_pos = glm::normalize(camera.position - s2.position);
-			texture = textures[get_nearest_neighbors(relative_pos)];
-			s2.draw(proxy_shader, texture, view, proj);
+			//relative_pos = glm::normalize(camera.position - s2.position);
+			//texture = textures[get_nearest_neighbors(relative_pos)];
+			//s2.draw(proxy_shader, texture, view, proj);
+			s2.draw(proxy_shader, nns, distances, view, proj);
 
 			//relative_pos = glm::normalize(s2.position + camera.position);
-			relative_pos = glm::normalize(camera.position - s3.position);
-			texture = textures[get_nearest_neighbors(relative_pos)];
-			s3.draw(proxy_shader, texture, view, proj);			
-			*/
+			//relative_pos = glm::normalize(camera.position - s3.position);
+			//texture = textures[get_nearest_neighbors(relative_pos)];
+			//s3.draw(proxy_shader, texture, view, proj);			
+			s3.draw(proxy_shader, nns, distances, view, proj);
 		}
 
 		glfwSwapBuffers(window);
@@ -324,7 +320,8 @@ void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Sh
 		else
 			draw_model(model, shader, view_mtx, proj_mtx, model_mtx);
 		*/
-		draw_model_depth(model, prepr_shader, view_mtx, proj_mtx, model_mtx, camera_target, transformed_camera.front);
+		//draw_model_depth(model, prepr_shader, view_mtx, proj_mtx, model_mtx, camera_target, transformed_camera.front);
+		draw_model(model, shader, view_mtx, proj_mtx, model_mtx);
 
 		texture_to_image(true, i, framebuffer);
 

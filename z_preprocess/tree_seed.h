@@ -10,13 +10,13 @@
 static const GLfloat quad_vertex_buffer_data[] = 
 {
 	//Positions			//Texture coords
-	-1.f, -2.0f, 0.0f,	0.0f, 0.0f,
-	1.0f, -2.0f, 0.0f,	1.0f, 0.0f,
-	-1.0f, 1.6f, 0.0f,	0.0f, 1.0f,
+	-1.3f, -2.0f, 0.0f,	0.0f, 0.0f,
+	1.3f, -2.0f, 0.0f,	1.0f, 0.0f,
+	-1.3f, 1.6f, 0.0f,	0.0f, 1.0f,
 
-	1.0f, 1.6f, 0.0f,	1.0f, 1.0f,
-	1.0f, -2.0f, 0.0f,	1.0f, 0.0f,
-	-1.0f, 1.6f, 0.0f,	0.0f, 1.0f
+	1.3f, 1.6f, 0.0f,	1.0f, 1.0f,
+	1.3f, -2.0f, 0.0f,	1.0f, 0.0f,
+	-1.3f, 1.6f, 0.0f,	0.0f, 1.0f
 };
 
 class Seed
