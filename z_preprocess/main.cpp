@@ -23,13 +23,13 @@
 
 //Hardcoded plane used to help show model center
 static const GLfloat g_vertex_buffer_data[] = {
-	-1.f, -2.0f, 0.0f,
-	1.0f, -2.0f, 0.0f,
-	-1.0f, 1.6f, 0.0f,
+	-1.f, -1.0f, 0.0f,
+	1.0f, -1.0f, 0.0f,
+	-1.0f, 1.0f, 0.0f,
 
-	1.0f, 1.6f, 0.0f,
-	1.0f, -2.0f, 0.0f,
-	-1.0f, 1.6f, 0.0f,
+	1.0f, 1.0f, 0.0f,
+	1.0f, -1.0f, 0.0f,
+	-1.0f, 1.0f, 0.0f,
 };
 
 
@@ -55,7 +55,7 @@ bool draw_sample_rays = false;
 bool draw_center_line = false;
 bool draw_center_plane = false;
 bool draw_depth = false;
-int selected_scene = 0;
+int selected_scene = 1;
 
 glm::vec3 * sample_points;
 
@@ -174,7 +174,8 @@ int main()
 	Shader preprocess_shader = Shader("shaders\\preprocess_vert_shader.txt", "shaders\\preprocess_frag_shader.txt");
 	Shader billboard_shader = Shader("shaders\\billboard_vertex_shader.txt", "shaders\\sphere_fragment_shader.txt");
 	Shader passthrough_shader = Shader("shaders\\passthrough_vert_shader.txt", "shaders\\sphere_fragment_shader.txt");
-	Shader proxy_shader = Shader("shaders\\billboard_vertex_shader.txt", "shaders\\tex_fragment_shader.txt");
+	Shader proxy_shader = Shader("shaders\\proxy_vertex_shader.txt", "shaders\\tex_fragment_shader.txt");
+	Shader proxy_no_shader = Shader("shaders\\proxy_vertex_shader.txt", "shaders\\tex_fragment_no_shader.txt");
 
 	//Configure mouse attributes
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -182,7 +183,11 @@ int main()
 	//Preparing model to render
 	float model_radius;
 	glm::vec3 model_center;	
-	Model nano_model("D:\\Bjarni\\Projects\\3Dmodels\\nanosuit\\nanosuit.obj");
+	//Model nano_model("D:\\Bjarni\\Projects\\3Dmodels\\nanosuit\\nanosuit.obj");
+	//Model nano_model("D:\\Bjarni\\Projects\\3Dmodels\\tree\\Tree_OBJ.obj");
+	//Model nano_model("D:\\Bjarni\\Projects\\3Dmodels\\tree2\\Tree_V9_Final.obj");	
+	//Model nano_model("D:\\Bjarni\\Projects\\3Dmodels\\tree3\\Tree2.obj");
+	Model nano_model("D:\\Bjarni\\Projects\\3Dmodels\\tree4\\Tree.obj");
 	nano_model.get_bounding_sphere(model_center, model_radius);
 	
 	//Preparing other geometry
@@ -199,7 +204,8 @@ int main()
 	sample_from_points(texture_framebuffer, textures, shader_program, preprocess_shader, nano_model, points, model_center, NUM_SAMPLES);
 
 	//WORK IN PROGRESS
-	glm::vec3 pos1(0, 0, 0);
+	//glm::vec3 pos1(0, 0, 0);
+	glm::vec3 pos1(0.0f, 0.0f, -1.0f);
 	glm::vec3 pos2(-5, 0, -10);
 	glm::vec3 pos3(5, 0, -20);
 	glm::vec3 rot(0, 0, 0);
@@ -230,7 +236,7 @@ int main()
 		glm::mat4 model;		
 		setup_matrices(camera, view, proj, model);
 
-		if(selected_scene == 0)
+		if(selected_scene == 1)
 		{
 			if (draw_depth)
 				draw_model_depth(nano_model, preprocess_shader, view, proj, model, model_center, camera.front);
@@ -246,7 +252,7 @@ int main()
 			if(draw_center_plane)
 				draw_center_plane_func(planeVAO, billboard_shader, view,proj, model, model_center);
 		}
-		if (selected_scene == 1)
+		if (selected_scene == 2)
 		{
 			GLuint texture;
 			glm::vec3 relative_pos;
@@ -259,7 +265,10 @@ int main()
 			//relative_pos = glm::normalize(camera.position - s1.position);			
 			relative_pos = glm::normalize(-camera.front);
 			get_nearest_neighbors(relative_pos, textures, nns, distances, 3);
-			s1.draw(proxy_shader, nns, distances, view, proj);
+			if(draw_center_plane)
+				s1.draw(proxy_no_shader, nns, distances, view, proj);
+			else
+				s1.draw(proxy_shader, nns, distances, view, proj);
 
 			
 			//relative_pos = glm::normalize(s2.position + camera.position);
@@ -303,15 +312,19 @@ void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Sh
 		glm::mat4 model_mtx;		
 		
 		//Transform camera locations 		
-		camera_transform_mtx = glm::translate(model_mtx, glm::vec3(0.0f, -1.75f, 0.0f));
-		camera_transform_mtx = glm::scale(model_mtx, glm::vec3(0.2f, 0.2f, 0.2f));
+		//camera_transform_mtx = glm::translate(model_mtx, glm::vec3(0.0f, -1.75f, 0.0f));
+		//camera_transform_mtx = glm::scale(model_mtx, glm::vec3(0.2f, 0.2f, 0.2f));
+		camera_transform_mtx = glm::translate(camera_transform_mtx, glm::vec3(0.0f, -0.5f, -1.0f));
+		camera_transform_mtx = glm::scale(camera_transform_mtx, glm::vec3(0.2f, 0.2f, 0.2f));
 		glm::vec3 camera_pos = camera_transform_mtx * glm::vec4(points[i], 1.0);
 		glm::vec3 camera_target = camera_transform_mtx * glm::vec4(model_center, 1.0);
-		glm::vec3 camera_direction = glm::normalize(camera_pos - camera_target);
+		
+		//glm::vec3 camera_direction = glm::normalize(points[i] - model_center);
+		glm::vec3 camera_direction = glm::normalize(camera_pos - camera_target);		
 		
 		//Render model to the framebuffer
-		//Camera transformed_camera(camera_pos + camera_direction, camera_direction, up);		
-		Camera transformed_camera(camera_pos, camera_direction, up);
+		//Camera transformed_camera(points[i], camera_direction, up);
+		Camera transformed_camera(camera_pos + camera_direction, camera_target, up);				
 		setup_matrices(transformed_camera, view_mtx, proj_mtx, model_mtx);		
 
 		/*
@@ -321,12 +334,11 @@ void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Sh
 			draw_model(model, shader, view_mtx, proj_mtx, model_mtx);
 		*/
 		//draw_model_depth(model, prepr_shader, view_mtx, proj_mtx, model_mtx, camera_target, transformed_camera.front);
-		draw_model(model, shader, view_mtx, proj_mtx, model_mtx);
+		draw_model_depth(model, prepr_shader, view_mtx, proj_mtx, model_mtx, model_center, transformed_camera.front);
+		//draw_model(model, shader, view_mtx, proj_mtx, model_mtx);
 
 		texture_to_image(true, i, framebuffer);
 
-		
-		//glm::vec3 relative_pos = glm::normalize(model_center + points[i]);		
 		glm::vec3 relative_pos = glm::normalize(points[i] - model_center);
 		sample_points[i] = relative_pos;
 	}
@@ -399,10 +411,13 @@ void draw_center_plane_func(GLuint VAO, Shader shader, const glm::mat4 & view_mt
 {
 	glm::mat4 identity(1.0);
 
+	glm::mat4 plane_model;
+	plane_model = glm::translate(model_mtx, model_center);
+
 	shader.use();
 	shader.setMat4("view", view_mtx);
 	shader.setMat4("project", proj_mtx);
-	shader.setMat4("model", identity);
+	shader.setMat4("model", plane_model);
 
 	glBindVertexArray(VAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -420,9 +435,9 @@ void setup_matrices(Camera camera, glm::mat4 & view_mtx, glm::mat4 & proj_mtx, g
 		(float)SCR_WIDTH / (float)SCR_HEIGHT,
 		0.1f, 100.0f);
 
-	//translate model down so it's at the center of the scene
-	model_mtx = glm::translate(model_mtx, glm::vec3(0.0f, -1.75f, 0.0f)); 
-	// it's a bit too big for our scene, so scale it down
+	//model_mtx = glm::translate(model_mtx, glm::vec3(0.0f, -1.75f, 0.0f));
+	//model_mtx = glm::scale(model_mtx, glm::vec3(0.2f, 0.2f, 0.2f));
+	model_mtx = glm::translate(model_mtx, glm::vec3(0.0f, -0.5f, -1.0f)); 
 	model_mtx = glm::scale(model_mtx, glm::vec3(0.2f, 0.2f, 0.2f));	
 }
 
@@ -574,7 +589,7 @@ glm::vec3 * generate_viewpoints_on_sphere(	Model model, int num_samples, GLuint 
 
 		float x = cos(phi) * r;
 		float z = sin(phi) * r;
-		points[i] = center + glm::vec3(x, y, z) * radius * 2.5f;
+		points[i] = center + glm::vec3(x, y, z) * radius * 1.5f;
 	}
 
 	glGenVertexArrays(1, &VAO);
@@ -736,10 +751,10 @@ void process_input(GLFWwindow * window, Camera & camera)
 		camera.position += glm::normalize(glm::cross(camera.front, camera.up)) * cameraSpeed;
 
 	//Scene options
-	if (glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS)
-		selected_scene = 0;
 	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
 		selected_scene = 1;
+	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+		selected_scene = 2;
 
 	//Rendering options
 	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS && config_swap_timer > 0.2f)

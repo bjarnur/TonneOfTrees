@@ -28,7 +28,7 @@ glm::mat4 Seed::get_model_mtx()
 	glm::mat4 model_mtx;
 
 
-	model_mtx = glm::translate(model_mtx, position);
+	model_mtx = glm::translate(model_mtx, position);	
 	//TODO rotate
 	//TODO scale
 

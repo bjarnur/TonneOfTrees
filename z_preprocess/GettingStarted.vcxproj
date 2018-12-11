@@ -144,8 +144,10 @@
     <Text Include="shaders\passthrough_vert_shader.txt" />
     <Text Include="shaders\preprocess_frag_shader.txt" />
     <Text Include="shaders\preprocess_vert_shader.txt" />
+    <Text Include="shaders\proxy_vertex_shader.txt" />
     <Text Include="shaders\sphere_fragment_shader.txt" />
     <Text Include="shaders\sphere_vertex_shader.txt" />
+    <Text Include="shaders\tex_fragment_no_shader.txt" />
     <Text Include="shaders\tex_fragment_shader.txt" />
     <Text Include="shaders\tex_vertex_shader.txt" />
     <Text Include="shaders\vertex_shader.txt" />

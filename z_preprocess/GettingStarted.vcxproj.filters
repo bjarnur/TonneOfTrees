@@ -97,5 +97,11 @@
     <Text Include="shaders\passthrough_vert_shader.txt">
       <Filter>Resource Files\Shaders</Filter>
     </Text>
+    <Text Include="shaders\proxy_vertex_shader.txt">
+      <Filter>Resource Files\Shaders</Filter>
+    </Text>
+    <Text Include="shaders\tex_fragment_no_shader.txt">
+      <Filter>Resource Files\Shaders</Filter>
+    </Text>
   </ItemGroup>
 </Project>

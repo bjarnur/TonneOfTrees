@@ -10,12 +10,12 @@
 static const GLfloat quad_vertex_buffer_data[] = 
 {
 	//Positions			//Texture coords
-	-1.3f, -2.0f, 0.0f,	0.0f, 0.0f,
-	1.3f, -2.0f, 0.0f,	1.0f, 0.0f,
+	-1.3f, -1.0f, 0.0f,	0.0f, 0.0f,
+	1.3f, -1.0f, 0.0f,	1.0f, 0.0f,
 	-1.3f, 1.6f, 0.0f,	0.0f, 1.0f,
 
 	1.3f, 1.6f, 0.0f,	1.0f, 1.0f,
-	1.3f, -2.0f, 0.0f,	1.0f, 0.0f,
+	1.3f, -1.0f, 0.0f,	1.0f, 0.0f,
 	-1.3f, 1.6f, 0.0f,	0.0f, 1.0f
 };
 
@@ -24,6 +24,7 @@ class Seed
 	public:
 		//Functions
 		Seed(glm::vec3 position, glm::vec3 rotation);
+		glm::mat4 Seed::get_model_mtx();
 		void draw(Shader shader, GLuint * textures, float * distances, const glm::mat4 & view_mtx, const glm::mat4 & proj_mtx);
 
 		//Variables
@@ -33,8 +34,7 @@ class Seed
 	private:
 
 		//Functions
-		void setup_mesh();
-		glm::mat4 Seed::get_model_mtx();		
+		void setup_mesh();		
 
 		//Variables
 		GLuint VAO;
