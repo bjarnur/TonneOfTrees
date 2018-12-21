@@ -38,10 +38,11 @@ static const GLfloat g_vertex_buffer_data[] = {
 \*************************/
 
 const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+const unsigned int SCR_HEIGHT = 800;
 const unsigned int TEX_WIDTH = 256;
 const unsigned int TEX_HEIGHT = 256;
-const unsigned int NUM_SAMPLES = 400;
+const unsigned int NUM_SAMPLES = 4
+;
 
 
 float deltaTime = 0.0f;	// Time between current frame and last frame
@@ -55,6 +56,8 @@ bool draw_sample_rays = false;
 bool draw_center_line = false;
 bool draw_center_plane = false;
 bool draw_depth = false;
+bool secondary_camera = false;
+bool camera_backed_up = false;
 int selected_scene = 1;
 
 glm::vec3 * sample_points;
@@ -164,7 +167,8 @@ int main()
 	}
 
 	//Setting up carmera
-	Camera camera(glm::vec3(0.0, 0.0, 3.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
+	Camera * camera = new Camera(glm::vec3(0.0, 0.0, 3.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
+	Camera * backup_camera = camera;
 	
 	//Configure shader program used by OpenGL
 	Shader shader_program = Shader("shaders\\vertex_shader.txt", "shaders\\fragment_shader.txt");
@@ -221,8 +225,8 @@ int main()
 		lastFrame = currentFrame;		
 		config_swap_timer += deltaTime;
 
-		process_input(window, camera);
-		camera.update(mouse.pitch, mouse.yaw);
+		process_input(window, *camera);
+		camera->update(mouse.pitch, mouse.yaw);
 
 		//Setup for render to window
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -231,15 +235,43 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
+		if (secondary_camera)
+		{
+			if (!camera_backed_up)
+			{
+				backup_camera = camera;
+				camera_backed_up = true;
+			}			
+
+			glm::mat4 camera_transform_mtx;
+			camera_transform_mtx = glm::translate(camera_transform_mtx, glm::vec3(0.0f, -0.5f, -1.0f));
+			camera_transform_mtx = glm::scale(camera_transform_mtx, glm::vec3(0.2f, 0.2f, 0.2f));
+
+			glm::vec3 temp = model_center + (glm::vec3(0.0f, 0.0f, 1.0f) * model_radius * 1.5f);
+			glm::vec3 camera_pos = camera_transform_mtx * glm::vec4(temp, 1.0);
+			glm::vec3 camera_target = camera_transform_mtx * glm::vec4(model_center, 1.0);
+			glm::vec3 camera_direction = glm::normalize(camera_pos - camera_target);
+			camera = new Camera(camera_pos + camera_direction, camera_target, glm::vec3(0.0, 1.0, 0.0));
+		}
+		else
+		{
+			if (!camera_backed_up)
+			{
+				camera = backup_camera;
+				camera_backed_up = true;
+			}
+		}
+		
+
 		glm::mat4 view;
 		glm::mat4 proj;
 		glm::mat4 model;		
-		setup_matrices(camera, view, proj, model);
-
+		setup_matrices(*camera, view, proj, model);		
+		
 		if(selected_scene == 1)
 		{
 			if (draw_depth)
-				draw_model_depth(nano_model, preprocess_shader, view, proj, model, model_center, camera.front);
+				draw_model_depth(nano_model, preprocess_shader, view, proj, model, model_center, camera->front);
 			else
 				draw_model(nano_model, shader_program, view, proj, model);
 
@@ -263,7 +295,7 @@ int main()
 				distances[i] = FLT_MAX;
 
 			//relative_pos = glm::normalize(camera.position - s1.position);			
-			relative_pos = glm::normalize(-camera.front);
+			relative_pos = glm::normalize(-camera->front);
 			get_nearest_neighbors(relative_pos, textures, nns, distances, 3);
 			if(draw_center_plane)
 				s1.draw(proxy_no_shader, nns, distances, view, proj);
@@ -289,11 +321,12 @@ int main()
 	}
 
 	glfwTerminate();
+	delete camera;
 	return 0;
 }
 
-void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Shader prepr_shader, 
-						Model model, glm::vec3 * points, glm::vec3 model_center, int num_samples)
+void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Shader prepr_shader,
+	Model model, glm::vec3 * points, glm::vec3 model_center, int num_samples)
 {	
 	sample_points = new glm::vec3[NUM_SAMPLES];
 	for (int i = 0; i < num_samples; i++)
@@ -589,7 +622,7 @@ glm::vec3 * generate_viewpoints_on_sphere(	Model model, int num_samples, GLuint 
 
 		float x = cos(phi) * r;
 		float z = sin(phi) * r;
-		points[i] = center + glm::vec3(x, y, z) * radius * 1.5f;
+		points[i] = center + glm::normalize(glm::vec3(x, y, z)) * radius * 1.5f;
 	}
 
 	glGenVertexArrays(1, &VAO);
@@ -605,12 +638,12 @@ glm::vec3 * generate_viewpoints_on_sphere(	Model model, int num_samples, GLuint 
 	rays_from_point_to_center(lineVAO, lineVBO, points, center, num_samples);
 
 	glm::vec3 * centerLine = new glm::vec3[6];
-	centerLine[0] = center + glm::vec3(0, 200, 0);
-	centerLine[1] = center + glm::vec3(0, -200, 0);
-	centerLine[2] = center + glm::vec3(200, 0, 0);
-	centerLine[3] = center + glm::vec3(-200, 0, 0);
-	centerLine[4] = center + glm::vec3(0, 0, 200);
-	centerLine[5] = center + glm::vec3(0, 0, -200);
+	centerLine[0] = center + glm::vec3(0, 5.2, 0);
+	centerLine[1] = center + glm::vec3(0, -5.2, 0);
+	centerLine[2] = center + glm::vec3(5.2, 0, 0);
+	centerLine[3] = center + glm::vec3(-5.2, 0, 0);
+	centerLine[4] = center + glm::vec3(0, 0, 5.2);
+	centerLine[5] = center + glm::vec3(0, 0, -5.2);
 
 	glGenVertexArrays(1, &centerVAO);
 	glGenBuffers(1, &centerVBO);
@@ -782,6 +815,12 @@ void process_input(GLFWwindow * window, Camera & camera)
 		draw_center_plane = !draw_center_plane;
 		config_swap_timer = 0.0f;
 	}	
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS && config_swap_timer > 0.2f)
+	{
+		secondary_camera = !secondary_camera;
+		config_swap_timer = 0.0f;
+		camera_backed_up = false;
+	}
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
