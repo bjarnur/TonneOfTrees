@@ -41,7 +41,7 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 800;
 const unsigned int TEX_WIDTH = 256;
 const unsigned int TEX_HEIGHT = 256;
-const unsigned int NUM_SAMPLES = 4;
+const unsigned int NUM_SAMPLES = 400;
 
 
 float deltaTime = 0.0f;	// Time between current frame and last frame

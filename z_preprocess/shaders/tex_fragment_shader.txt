@@ -74,8 +74,11 @@ void main()
 	{
 		sign2 = -1.0;
 	}*/
-	float c1 = ((length(u1)) + h/2) * h;
-	float c2 = ((length(v1)) + h/2) * h;
+
+	//float c1 = ((length(u1)) + h/2) * h;
+	//float c2 = ((length(v1)) + h/2) * h;
+	float c1 = (u1.x + u1.y + h/2) * h;
+	float c2 = (v1.x + v1.y + h/2) * h;
 
 	if(c1 > 1.0 || c2 > 1.0)
 	{
@@ -85,16 +88,13 @@ void main()
 	{
 		FragColor = vec4(0.0, 1.0, 0.0, 1.0);
 	}
-	else if(c1 < 0.5 || c2 < 0.5)
-	{
-		FragColor = vec4(1.0, 1.0, 0.0, 1.0);
-	}
 	else
 	{
-		FragColor = texture(screenTexture1, vec2(c1, c2));
+		FragColor = texture(screenTexture1, vec2(c1, 1.0 - c2));
 		//FragColor = texture(screenTexture1, vec2(uCoord, vCoord));
 		//FragColor = vec4(0.0, 0.0, 1.0, 1.0);
 	}	
+	//FragColor = texture(screenTexture1, vec2(c1, 1.0 - c2));
 	
 
 	//vec4 texColor1 = texture(screenTexture1, TexCoords);
