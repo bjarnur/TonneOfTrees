@@ -35,7 +35,8 @@ glm::mat4 Seed::get_model_mtx()
 	return model_mtx;
 }
 
-void Seed::draw(Shader shader, GLuint * textures, float * distances, const glm::mat4 & view_mtx, const glm::mat4 & proj_mtx)
+void Seed::draw(Shader shader, GLuint * textures, float * distances, const glm::mat4 & view_mtx, const glm::mat4 & proj_mtx,
+	glm::vec3 * normals, glm::vec3 * ups, glm::vec3 * pos, glm::vec3 model_center)
 {
 	//Normalize weights
 	std::cout << "w1: " << distances[0] << " , w2: " << distances[1] << ", w3: " << distances[2] << std::endl;
@@ -63,6 +64,18 @@ void Seed::draw(Shader shader, GLuint * textures, float * distances, const glm::
 	shader.setMat4("project", proj_mtx);
 	shader.setMat4("model", get_model_mtx());
 	shader.setVec3("weights", glm::vec3(distances[0], distances[1], distances[2]));
+
+	shader.setVec3("normal1", normals[0]);
+	shader.setVec3("normal2", normals[1]);
+	shader.setVec3("normal3", normals[2]);
+	shader.setVec3("up1", ups[0]);
+	shader.setVec3("up2", ups[1]);
+	shader.setVec3("up3", ups[2]);
+	shader.setVec3("center1", model_center);
+	shader.setVec3("center1", pos[0]);
+	shader.setVec3("center2", pos[1]);
+	shader.setVec3("center3", pos[2]);
+
 	
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, textures[0]);

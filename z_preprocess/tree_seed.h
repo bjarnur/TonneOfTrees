@@ -25,7 +25,8 @@ class Seed
 		//Functions
 		Seed(glm::vec3 position, glm::vec3 rotation);
 		glm::mat4 Seed::get_model_mtx();
-		void draw(Shader shader, GLuint * textures, float * distances, const glm::mat4 & view_mtx, const glm::mat4 & proj_mtx);
+		void Seed::draw(Shader shader, GLuint * textures, float * distances, const glm::mat4 & view_mtx, const glm::mat4 & proj_mtx,
+			glm::vec3 * normals, glm::vec3 * ups, glm::vec3 * pos, glm::vec3 model_center);
 
 		//Variables
 		glm::vec3 position;
