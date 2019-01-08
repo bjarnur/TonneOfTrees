@@ -4,8 +4,8 @@ layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec2 aTex;
 
 out vec2 TexCoords;
-out vec3 CameraRight_worldspace;
-out vec3 CameraUp_worldspace;
+out vec3 CameraRight;
+out vec3 CameraUp;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -16,8 +16,8 @@ void main()
 	TexCoords = aTex;
 
     mat4 model_view = view * model;
-	CameraRight_worldspace = vec3(view[0][0], view[1][0], view[2][0]);
-	CameraUp_worldspace = vec3 (view[0][1], view[1][1], view[2][1]);
+	CameraRight = vec3(view[0][0], view[1][0], view[2][0]);
+	CameraUp = vec3 (view[0][1], view[1][1], view[2][1]);
 
 	// First colunm.
 	model_view[0][0] = 1.0; 
@@ -34,7 +34,6 @@ void main()
 	model_view[2][1] = 0.0; 
 	model_view[2][2] = 1.0; 
 	
-	vec4 P = model_view * vec4(aPos, 1.0);	
-	
+	vec4 P = model_view * vec4(aPos, 1.0);		
 	gl_Position = project * P;
 }

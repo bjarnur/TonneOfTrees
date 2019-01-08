@@ -17,14 +17,11 @@ void main()
 {
 	//Get world-space location of points    
 	gl_Position = model * vec4(aPos, 1.0);
-	//gl_Position = vec4(aPos, 1.0);
 	vec4 transformed_model_center = model * vec4(model_center, 1.0);
-	//vec4 transformed_model_center = vec4(model_center, 1.0);
 
 	//Compute distance from current fragment to center plane
 	float d = dot(camera_forward, transformed_model_center.xyz);
 	dist_c = abs((dot(camera_forward, gl_Position.xyz) - d)/ dot(camera_forward, camera_forward));
-	dist_c = distance(gl_Position, transformed_model_center);
 
 	//An alternative implementation
 	//float sn = -dot(vec4(camera_forward, 1.0), (gl_Position - transformed_model_center));

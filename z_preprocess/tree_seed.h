@@ -6,7 +6,6 @@
 #include "shader.h"
 
 //Hardcoded plane used for camera facing proxy
-
 static const GLfloat quad_vertex_buffer_data[] = 
 {
 	//Positions			//Texture coords
@@ -19,14 +18,29 @@ static const GLfloat quad_vertex_buffer_data[] =
 	-1.3f, 1.6f, 0.0f,	0.0f, 1.0f
 };
 
+struct Sample
+{
+	//Texture id
+	GLuint id;
+	
+	//Defines sample plane (centered at origin)
+	glm::vec3 normal;
+	glm::vec3 up;
+
+	//Angular distance from current view
+	float distance;
+
+
+	Sample() : distance(FLT_MAX) {}
+};
+
 class Seed
 {
 	public:
 		//Functions
 		Seed(glm::vec3 position, glm::vec3 rotation);
-		glm::mat4 Seed::get_model_mtx();
-		void Seed::draw(Shader shader, GLuint * textures, float * distances, const glm::mat4 & view_mtx, const glm::mat4 & proj_mtx,
-			glm::vec3 * normals, glm::vec3 * ups, glm::vec3 * pos, glm::vec3 model_center);
+		
+		void Seed::draw(Shader shader, Sample * neighborSamples, const glm::mat4 & view_mtx, const glm::mat4 & proj_mtx);
 
 		//Variables
 		glm::vec3 position;
@@ -35,7 +49,9 @@ class Seed
 	private:
 
 		//Functions
-		void setup_mesh();		
+		void setup_mesh();
+		glm::mat4 Seed::get_model_mtx();
+		void normalize_weights(Sample * neighborSamples);
 
 		//Variables
 		GLuint VAO;

@@ -2,8 +2,8 @@
 out vec4 FragColor;
   
 in vec2 TexCoords;
-in vec3 CameraRight_worldspace;
-in vec3 CameraUp_worldspace;
+in vec3 CameraRight;
+in vec3 CameraUp;
 
 uniform vec3 weights;
 uniform vec3 up0;
@@ -14,84 +14,65 @@ uniform vec3 normal0;
 uniform vec3 normal1;
 uniform vec3 normal2;
 uniform vec3 normal3;
-uniform vec3 right0;
-uniform vec3 right1;
-uniform vec3 right2;
-uniform vec3 right3;
-uniform vec3 center0;
-uniform vec3 center1;
-uniform vec3 center2;
-uniform vec3 center3;
 uniform sampler2D screenTexture1;
 uniform sampler2D screenTexture2;
 uniform sampler2D screenTexture3;
 
+/*
+Given a 3D point and a sample plane (centered around origin with 
+provided norm and up vectors), this function returns the 2D coordinates
+resulted in projecting the point to the plane. 
+*/
+vec2 projectPointToSample(vec3 point, vec3 sampleNorm, vec3 sampleUp, float sampleDim)
+{
+	//Project point to sample plane
+	float pointPlaneDist = dot(point, sampleNorm);
+	vec3 projectedPos = (point - (sampleNorm * pointPlaneDist));
+
+	//Get local sample coords
+	vec3 sampleRight = -cross(sampleNorm, sampleUp);
+	float c1 = (dot(projectedPos, sampleRight) + sampleDim/2) * sampleDim;
+	float c2 = (dot(projectedPos, sampleUp) + sampleDim/2) * sampleDim;
+	
+	vec2 coords = vec2(c1, c2);
+	return coords;
+}
+
+
 void main()
 { 
-    float h = 1.03696;
-	float uCoord = (TexCoords.x * h) - h/2;
-	float vCoord = (TexCoords.y * h) - h/2;
-	vec3 right = vec3(1.0, 0.0, 0.0);
-	//vec3 worldPos = center0 + CameraRight_worldspace * uCoord + CameraUp_worldspace *  vCoord;
-	
-	vec3 worldPos = CameraRight_worldspace * uCoord + CameraUp_worldspace *  vCoord;
-	//vec3 worldPos = right * uCoord + CameraUp_worldspace *  vCoord;
+	//World-size of sample textures
+    float sampleDim = 1.03696;
 
-	if(abs(length(CameraUp_worldspace)) > 1.001)
-	{
-		FragColor = vec4(0.0, 0.0, 1.0, 1.0);
-		return;
-	}
+	//Sample coordinates
+	float uCoord = (TexCoords.x * sampleDim) - sampleDim/2;
+	float vCoord = (TexCoords.y * sampleDim) - sampleDim/2;
 
-	//Project to tex1
-	//vec3 v = worldPos - center1;
-	//float dist1 = dot(v, normal1);
-	//vec3 proj1 = (worldPos - normal1 * dist1); //- center1;
+	//World position of sample coordinates
+	vec3 worldPos = CameraRight * uCoord + CameraUp *  vCoord;
 
-	float dist1 = dot(worldPos, normal1);
-	vec3 proj1 = (worldPos - normal1 * dist1); //- center1;
+	vec2 coords1 = projectPointToSample(worldPos, normal1, up1, sampleDim);
+	vec2 coords2 = projectPointToSample(worldPos, normal2, up2, sampleDim);
+	vec2 coords3 = projectPointToSample(worldPos, normal3, up3, sampleDim);
 
-	//vec3 u1 = dot(proj1, CameraRight_worldspace) * CameraRight_worldspace;
-	vec3 v1 = (dot(proj1, up1) / length(up1)) * up1;	
-	vec3 u1 = proj1 - v1;
-	//vec3 v1 = u1 - proj1;
+	vec4 texColor1 = texture(screenTexture1, coords1);
+	vec4 texColor2 = texture(screenTexture2, coords2);
+	vec4 texColor3 = texture(screenTexture3, coords3);
+	vec4 texColor = (texColor1 * weights.x) + (texColor2 * weights.y) + (texColor3 * weights.z);
 
-	//float foo = dot(proj1, up1);
-	//FragColor = vec4(dist1, dist1, dist1, 1.0);
-	//return;
+	//Why is this hack necessary?? Using only alpha discards some fragments that shouldn't be transparent!?
+	if(texColor.r == 0.0 && texColor.g == 0.0 && texColor.b == 0.0 && texColor.a == 0.0)
+		discard;
 
-	//vec3 u1 = (dot(proj1, right1) / length(right1)) * right1;
-	//vec3 v1 = proj1 - u1;
-	//vec3 v1 = u1 - proj1;
+	FragColor = texColor;
 
-	//float c1 = length((u1 + h/2) * h);
-	//float c2 = length((v1 + h/2) * h);
-	
-	//float c1 = (length(u1) + h/2) * h;
-	//float c2 = (length(v1) + h/2) * h;
-	
-	//float c1 = ((length(u1)) + h/2) * h;
-	//float c2 = ((length(v1)) + h/2) * h;
-	
-	//float c1 = (u1.x + u1.y + u1.z + h/2) * h;
-	//float c2 = (v1.x + v1.y + v1.z + h/2) * h;
 
-	vec3 rrr = cross(normal1, up1);
-	float c1 = (dot(proj1, -rrr) + h/2) * h;
-	float c2 = (dot(proj1, up1) + h/2) * h;
 
-	/*
-	mat3x2 proj2;
-	vec3 rrr = cross(normal1, up1);
-	proj2[0][0] = rrr.x;
-	proj2[1][0] = rrr.y;
-	proj2[2][0] = rrr.z;
-	proj2[0][1] = up1.x;
-	proj2[1][1] = up1.y;
-	proj2[2][1] = up1.z;
-	vec2 sampleVec2d = proj2 * proj1;
-	float c1 = dot()
-	*/
+
+	//Convenient for debugging
+	/*	
+	float c1 = coords1.x;
+	float c2 = coords1.y;
 	if(c1 > 1.0 || c2 > 1.0)
 	{
 		FragColor = vec4(1.0, 0.0, 0.0, 1.0);
@@ -103,27 +84,6 @@ void main()
 	else
 	{
 		FragColor = texture(screenTexture1, vec2(c1, c2));
-		//FragColor = texture(screenTexture1, vec2(uCoord, vCoord));
-		//FragColor = vec4(0.0, 0.0, 1.0, 1.0);
 	}	
-	//FragColor = texture(screenTexture1, vec2(c1, 1.0 - c2));
-	
-
-	//vec4 texColor1 = texture(screenTexture1, TexCoords);
-	//vec4 texColor2 = texture(screenTexture2, TexCoords);
-	//vec4 texColor3 = texture(screenTexture3, TexCoords);
-	//vec4 texColor = (texColor1 * weights.x) + (texColor2 * weights.y) + (texColor3 * weights.z);
-
-	//float xCoord = (TexCoords.u * 10.4) - 5.2;
-	//float yCoord = (TexCoords.v * 10.4) - 5.2;
-
-	//vec3 pointInPlane(xCoord, yCoord, 0);
-	//float dist = xCoord * normal1.x + yCoord * normal1.y;
-	//vec3 projectedPoint = (pointInPlane - dist * normal1);
-
-	//Why is this hack necessary?? Using only alpha discards some fragments that shouldn't be transparent!?
-	//if(texColor.r == 0.0 && texColor.g == 0.0 && texColor.b == 0.0 && texColor.a == 0.0)
-		//discard;
-
-	//FragColor = texColor;
+	*/
 }

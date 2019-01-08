@@ -41,7 +41,7 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 800;
 const unsigned int TEX_WIDTH = 256;
 const unsigned int TEX_HEIGHT = 256;
-const unsigned int NUM_SAMPLES = 40;
+const unsigned int NUM_SAMPLES = 400;
 
 
 float deltaTime = 0.0f;	// Time between current frame and last frame
@@ -55,7 +55,6 @@ bool draw_sample_rays = false;
 bool draw_center_line = false;
 bool draw_center_plane = false;
 bool draw_depth = false;
-bool secondary_camera = false;
 bool camera_backed_up = false;
 int selected_scene = 1;
 
@@ -137,7 +136,7 @@ void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Sh
 
 /**
 Returns the sample points that's closes to the provided point */
-void get_nearest_neighbors(glm::vec3 pos, GLuint * textures, GLuint * nns, float * distances, int num, glm::vec3 * n, glm::vec3 * u, glm::vec3 * p);
+Sample * get_nearest_neighbors(glm::vec3 pos, GLuint * textures, int num);
 
 /*	
 				Functions used for various visualizations 
@@ -170,36 +169,28 @@ int main()
 
 	//Setting up carmera
 	Camera * camera = new Camera(glm::vec3(0.0, 0.0, 3.0), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
-	Camera * backup_camera = camera;
 	
 	//Configure shader program used by OpenGL
-	Shader shader_program = Shader("shaders\\vertex_shader.txt", "shaders\\fragment_shader.txt");
-	//Shader screen_shader = Shader("shaders\\tex_vertex_shader.txt", "shaders\\tex_fragment_shader.txt");
+	Shader model_shader = Shader("shaders\\vertex_shader.txt", "shaders\\fragment_shader.txt");
 	Shader sphere_shader = Shader("shaders\\sphere_vertex_shader.txt", "shaders\\sphere_fragment_shader.txt");
 	Shader blue_shader = Shader("shaders\\sphere_vertex_shader.txt", "shaders\\blue_fragment_shader.txt");
 	Shader preprocess_shader = Shader("shaders\\preprocess_vert_shader.txt", "shaders\\preprocess_frag_shader.txt");
 	Shader billboard_shader = Shader("shaders\\billboard_vertex_shader.txt", "shaders\\sphere_fragment_shader.txt");
-	Shader passthrough_shader = Shader("shaders\\passthrough_vert_shader.txt", "shaders\\sphere_fragment_shader.txt");
 	Shader proxy_shader = Shader("shaders\\proxy_vertex_shader.txt", "shaders\\tex_fragment_shader.txt");
-	Shader proxy_no_shader = Shader("shaders\\proxy_vertex_shader.txt", "shaders\\tex_fragment_no_shader.txt");
 
 	//Configure mouse attributes
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	
 	//Preparing model to render
 	float model_radius;
-	glm::vec3 model_center;	
-	//Model nano_model("D:\\Bjarni\\Projects\\3Dmodels\\nanosuit\\nanosuit.obj");
-	//Model nano_model("D:\\Bjarni\\Projects\\3Dmodels\\tree\\Tree_OBJ.obj");
-	//Model nano_model("D:\\Bjarni\\Projects\\3Dmodels\\tree2\\Tree_V9_Final.obj");	
-	//Model nano_model("D:\\Bjarni\\Projects\\3Dmodels\\tree3\\Tree2.obj");
-	Model nano_model("D:\\Bjarni\\Projects\\3Dmodels\\tree4\\Tree.obj");
-	nano_model.get_bounding_sphere(model_center, model_radius);
+	glm::vec3 model_center;		
+	Model tree_model("D:\\Bjarni\\Projects\\3Dmodels\\tree4\\Tree.obj");
+	tree_model.get_bounding_sphere(model_center, model_radius);
 	
 	//Preparing other geometry
 	GLuint quadVAO, quadVBO, sphereVAO, sphereVBO, lineVAO, lineVBO, centerVAO, centerVBO, planeVAO, planeVBO;
 	set_buffers_for_quad_render(quadVAO, quadVBO);
-	glm::vec3 * points = generate_viewpoints_on_sphere(nano_model, NUM_SAMPLES, sphereVAO, sphereVBO, lineVAO, lineVBO, centerVAO, centerVBO, planeVAO, planeVBO);
+	glm::vec3 * points = generate_viewpoints_on_sphere(tree_model, NUM_SAMPLES, sphereVAO, sphereVBO, lineVAO, lineVBO, centerVAO, centerVBO, planeVAO, planeVBO);
 
 	//Preparing texture framebuffer
 	GLuint texture_framebuffer;	
@@ -207,10 +198,9 @@ int main()
 	get_texture_framebuffer(texture_framebuffer, textures);
 
 	//Generate sample images
-	sample_from_points(texture_framebuffer, textures, shader_program, preprocess_shader, nano_model, points, model_center, NUM_SAMPLES);
+	sample_from_points(texture_framebuffer, textures, model_shader, preprocess_shader, tree_model, points, model_center, NUM_SAMPLES);
 
-	//WORK IN PROGRESS
-	//glm::vec3 pos1(0, 0, 0);
+	//Hardcoded positions of proxies
 	glm::vec3 pos1(0.0f, 0.0f, -1.0f);
 	glm::vec3 pos2(-5, 0, -10);
 	glm::vec3 pos3(5, 0, -20);
@@ -242,50 +232,16 @@ int main()
 		glm::mat4 model;
 		setup_matrices(*camera, view, proj, model);
 
-		if (secondary_camera)
-		{
-			if (!camera_backed_up)
-			{
-				backup_camera = camera;
-				camera_backed_up = true;
-			}			
-
-			glm::mat4 camera_transform_mtx;
-			camera_transform_mtx = glm::translate(camera_transform_mtx, glm::vec3(0.0f, -0.5f, -1.0f));
-			camera_transform_mtx = glm::scale(camera_transform_mtx, glm::vec3(0.2f, 0.2f, 0.2f));
-
-			glm::vec3 temp = model_center + (glm::vec3(0.0f, 0.0f, 1.0f) * model_radius * 1.5f);
-			glm::vec3 camera_pos = camera_transform_mtx * glm::vec4(temp, 1.0);
-			glm::vec3 camera_target = camera_transform_mtx * glm::vec4(model_center, 1.0);
-			glm::vec3 camera_direction = glm::normalize(camera_pos - camera_target);
-			camera = new Camera(camera_pos + camera_direction, camera_target, glm::vec3(0.0, 1.0, 0.0));
-
-			// convert vertical fov to radians
-			float vFOV = 45.0f * M_PI / 180;        
-			// visible height - Correct!! use for calculations
-			float height = 2 * tan(vFOV / 2) * glm::distance(camera_pos + camera_direction, camera_target); 
-
-			glm::mat4 model2;
-			model2 = glm::translate(model2, camera_target);
-			draw_center_line_func(centerVAO, blue_shader, view, proj, model2);
-		}
-		else
-		{
-			if (!camera_backed_up)
-			{
-				camera = backup_camera;
-				camera_backed_up = true;
-			}
-		}		
-
-
+		//Render actual 3D model
 		if(selected_scene == 1)
 		{
+			//Depth / color swithc
 			if (draw_depth)
-				draw_model_depth(nano_model, preprocess_shader, view, proj, model, model_center, camera->front);
+				draw_model_depth(tree_model, preprocess_shader, view, proj, model, model_center, camera->front);
 			else
-				draw_model(nano_model, shader_program, view, proj, model);
+				draw_model(tree_model, model_shader, view, proj, model);
 
+			//Render visual aids
 			if(draw_sample_views)
 				draw_sample_views_func(sphereVAO, sphere_shader, view, proj, model);
 			if (draw_sample_rays)
@@ -295,44 +251,16 @@ int main()
 			if(draw_center_plane)
 				draw_center_plane_func(planeVAO, billboard_shader, view,proj, model, model_center);
 		}
+
+		//Render camera facing proxies
 		if (selected_scene == 2)
-		{
-			GLuint texture;
-			glm::vec3 relative_pos;
-			
-			GLuint * nns = new GLuint[3];
-			glm::vec3 * nn_normals = new glm::vec3[3];
-			glm::vec3 * nn_ups = new glm::vec3[3];
-			glm::vec3 * nn_pos = new glm::vec3[3];
-			float * distances = new float[3];
-			for (int i = 0; i < 3; i++)
-				distances[i] = FLT_MAX;
-			
-			//relative_pos = glm::normalize(camera.position - s1.position);			
-			relative_pos = glm::normalize(-camera->front);
-			get_nearest_neighbors(relative_pos, textures, nns, distances, 3, nn_normals, nn_ups, nn_pos);
-			glm::vec3 cam_right = glm::vec3(view[0][0], view[1][0], view[2][0]);
-			glm::vec3 cam_up = glm::vec3(view[0][1], view[1][1], view[2][1]);
-			std::cout << "camera right: " << cam_right.x << ", " << cam_right.y << ", " << cam_right.z << std::endl;
-			std::cout << "camera up: " << cam_up.x << ", " << cam_up.y << ", " << cam_up.z << std::endl;
-			std::cout << "sample normal: " << nn_normals[0].x << ", " << nn_normals[0].y << ", " << nn_normals[0].z << std::endl;
-			if(draw_center_plane)
-				s1.draw(proxy_no_shader, nns, distances, view, proj, nn_normals, nn_ups, nn_pos, s1.position);
-			else
-				s1.draw(proxy_shader, nns, distances, view, proj, nn_normals, nn_ups, nn_pos, s1.position);
+		{									
+			Sample * neighbor_samples = get_nearest_neighbors(glm::normalize(-camera->front), textures, 3);
+			s1.draw(proxy_shader, neighbor_samples, view, proj);
+			s2.draw(proxy_shader, neighbor_samples, view, proj);
+			s3.draw(proxy_shader, neighbor_samples, view, proj);
 
-			
-			//relative_pos = glm::normalize(s2.position + camera.position);
-			//relative_pos = glm::normalize(camera.position - s2.position);
-			//texture = textures[get_nearest_neighbors(relative_pos)];
-			//s2.draw(proxy_shader, texture, view, proj);
-			s2.draw(proxy_shader, nns, distances, view, proj, nn_normals, nn_ups, nn_pos, s1.position);
-
-			//relative_pos = glm::normalize(s2.position + camera.position);
-			//relative_pos = glm::normalize(camera.position - s3.position);
-			//texture = textures[get_nearest_neighbors(relative_pos)];
-			//s3.draw(proxy_shader, texture, view, proj);			
-			s3.draw(proxy_shader, nns, distances, view, proj, nn_normals, nn_ups, nn_pos, s1.position);
+			delete[] neighbor_samples;
 		}
 
 		glfwSwapBuffers(window);
@@ -341,6 +269,7 @@ int main()
 
 	glfwTerminate();
 	delete camera;
+	delete[] textures;
 	return 0;
 }
 
@@ -366,18 +295,14 @@ void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Sh
 		glm::mat4 model_mtx;		
 		
 		//Transform camera locations 		
-		//camera_transform_mtx = glm::translate(model_mtx, glm::vec3(0.0f, -1.75f, 0.0f));
-		//camera_transform_mtx = glm::scale(model_mtx, glm::vec3(0.2f, 0.2f, 0.2f));
 		camera_transform_mtx = glm::translate(camera_transform_mtx, glm::vec3(0.0f, -0.5f, -1.0f));
 		camera_transform_mtx = glm::scale(camera_transform_mtx, glm::vec3(0.2f, 0.2f, 0.2f));
 		glm::vec3 camera_pos = camera_transform_mtx * glm::vec4(points[i], 1.0);
 		glm::vec3 camera_target = camera_transform_mtx * glm::vec4(model_center, 1.0);
 		
-		//glm::vec3 camera_direction = glm::normalize(points[i] - model_center);
 		glm::vec3 camera_direction = glm::normalize(camera_pos - camera_target);		
 		
 		//Render model to the framebuffer
-		//Camera transformed_camera(points[i], camera_direction, up);
 		Camera transformed_camera(camera_pos + camera_direction, camera_target, up);				
 		setup_matrices(transformed_camera, view_mtx, proj_mtx, model_mtx);		
 
@@ -386,11 +311,8 @@ void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Sh
 			draw_model_depth(model, prepr_shader, view_mtx, proj_mtx, model_mtx, camera_target, transformed_camera.front);
 		else
 			draw_model(model, shader, view_mtx, proj_mtx, model_mtx);
-		*/
-		//draw_model_depth(model, prepr_shader, view_mtx, proj_mtx, model_mtx, camera_target, transformed_camera.front);
+		*/		
 		draw_model_depth(model, prepr_shader, view_mtx, proj_mtx, model_mtx, model_center, transformed_camera.front);
-		//draw_model(model, shader, view_mtx, proj_mtx, model_mtx);
-
 		texture_to_image(true, i, framebuffer);
 
 		glm::vec3 relative_pos = glm::normalize(points[i] - model_center);
@@ -400,33 +322,32 @@ void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Sh
 	}
 }
 
-void get_nearest_neighbors(glm::vec3 pos, GLuint * textures, GLuint * nns, float * distances, int num, glm::vec3 * n, glm::vec3 * u, glm::vec3 * p)
+Sample * get_nearest_neighbors(glm::vec3 pos, GLuint * textures, int num)
 {
+	Sample * nns = new Sample[3];
+
 	for (int i = 0; i < NUM_SAMPLES; i++)
 	{
 		float dist = glm::distance(sample_points[i], pos);
 		for (int j = 0; j < num; j++)
 		{			
-			if (dist < distances[j])
+			if (dist < nns[j].distance)
 			{
 				for (int k = num - 1; k > j; k--)
 				{
 					nns[k] = nns[k - 1];
-					distances[k] = distances[k - 1];
-					n[k] = n[k - 1];
-					u[k] = u[k - 1];
-					p[k] = p[k - 1];
 				}
 
-				nns[j] = textures[i];
-				distances[j] = dist;
-				n[j] = sample_normals[i];
-				u[j] = sample_ups[i];
-				p[j] = sample_points[i];
+				nns[j].id = textures[i];
+				nns[j].distance = dist;
+				nns[j].normal = sample_normals[i];
+				nns[j].up = sample_ups[i];
 				break;
 			}
 		}		
 	}
+
+	return nns;
 }
 
 void draw_sample_views_func(GLuint VAO, Shader shader, const glm::mat4 & view_mtx,
@@ -666,23 +587,13 @@ glm::vec3 * generate_viewpoints_on_sphere(	Model model, int num_samples, GLuint 
 	//Generate a visualization of the view-rays
 	rays_from_point_to_center(lineVAO, lineVBO, points, center, num_samples);
 
-	/*
 	glm::vec3 * centerLine = new glm::vec3[6];
-	centerLine[0] = center + glm::vec3(0, 5.2, 0);
-	centerLine[1] = center + glm::vec3(0, -5.2, 0);
-	centerLine[2] = center + glm::vec3(5.2, 0, 0);
-	centerLine[3] = center + glm::vec3(-5.2, 0, 0);
-	centerLine[4] = center + glm::vec3(0, 0, 5.2);
-	centerLine[5] = center + glm::vec3(0, 0, -5.2);
-	*/
-
-	glm::vec3 * centerLine = new glm::vec3[6];
-	centerLine[0] = glm::vec3(0, 1.03696, 0);
-	centerLine[1] = glm::vec3(0, -1.03696, 0);
-	centerLine[2] = glm::vec3(1.03696, 0, 0);
-	centerLine[3] = glm::vec3(-1.03696, 0, 0);
-	centerLine[4] = glm::vec3(0, 0, 1.03696);
-	centerLine[5] = glm::vec3(0, 0, -1.03696);
+	centerLine[0] = center + glm::vec3(0, -200, 0);
+	centerLine[1] = center + glm::vec3(0, 200, 0);
+	centerLine[2] = center + glm::vec3(-200, 0, 0);
+	centerLine[3] = center + glm::vec3(200, 0, 0);
+	centerLine[4] = center + glm::vec3(0, 0, -200);
+	centerLine[5] = center + glm::vec3(0, 0, 200);
 
 	glGenVertexArrays(1, &centerVAO);
 	glGenBuffers(1, &centerVBO);
@@ -854,12 +765,6 @@ void process_input(GLFWwindow * window, Camera & camera)
 		draw_center_plane = !draw_center_plane;
 		config_swap_timer = 0.0f;
 	}	
-	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS && config_swap_timer > 0.2f)
-	{
-		secondary_camera = !secondary_camera;
-		config_swap_timer = 0.0f;
-		camera_backed_up = false;
-	}
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -876,3 +781,19 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
 	mouse.update_scroll(yoffset);
 }
+
+/*
+Just in cases
+
+glm::vec3 temp = model_center + (glm::vec3(0.0f, 0.0f, 1.0f) * model_radius * 1.5f);
+glm::mat4 camera_transform_mtx;
+camera_transform_mtx = glm::translate(camera_transform_mtx, glm::vec3(0.0f, -0.5f, -1.0f));
+camera_transform_mtx = glm::scale(camera_transform_mtx, glm::vec3(0.2f, 0.2f, 0.2f));
+glm::vec3 camera_pos = camera_transform_mtx * glm::vec4(temp, 1.0);
+glm::vec3 camera_target = camera_transform_mtx * glm::vec4(model_center, 1.0);
+glm::vec3 camera_direction = glm::normalize(camera_pos - camera_target);
+// convert vertical fov to radians
+float vFOV = 45.0f * M_PI / 180;
+// visible height - Correct!! use for calculations
+float height = 2 * tan(vFOV / 2) * glm::distance(camera_pos + camera_direction, camera_target);
+*/
