@@ -41,7 +41,7 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 800;
 const unsigned int TEX_WIDTH = 256;
 const unsigned int TEX_HEIGHT = 256;
-const unsigned int NUM_SAMPLES = 400;
+const unsigned int NUM_SAMPLES = 40;
 
 
 float deltaTime = 0.0f;	// Time between current frame and last frame
@@ -311,6 +311,11 @@ int main()
 			//relative_pos = glm::normalize(camera.position - s1.position);			
 			relative_pos = glm::normalize(-camera->front);
 			get_nearest_neighbors(relative_pos, textures, nns, distances, 3, nn_normals, nn_ups, nn_pos);
+			glm::vec3 cam_right = glm::vec3(view[0][0], view[1][0], view[2][0]);
+			glm::vec3 cam_up = glm::vec3(view[0][1], view[1][1], view[2][1]);
+			std::cout << "camera right: " << cam_right.x << ", " << cam_right.y << ", " << cam_right.z << std::endl;
+			std::cout << "camera up: " << cam_up.x << ", " << cam_up.y << ", " << cam_up.z << std::endl;
+			std::cout << "sample normal: " << nn_normals[0].x << ", " << nn_normals[0].y << ", " << nn_normals[0].z << std::endl;
 			if(draw_center_plane)
 				s1.draw(proxy_no_shader, nns, distances, view, proj, nn_normals, nn_ups, nn_pos, s1.position);
 			else

@@ -39,7 +39,7 @@ void Seed::draw(Shader shader, GLuint * textures, float * distances, const glm::
 	glm::vec3 * normals, glm::vec3 * ups, glm::vec3 * pos, glm::vec3 model_center)
 {
 	//Normalize weights
-	std::cout << "w1: " << distances[0] << " , w2: " << distances[1] << ", w3: " << distances[2] << std::endl;
+	//std::cout << "w1: " << distances[0] << " , w2: " << distances[1] << ", w3: " << distances[2] << std::endl;
 	float sum = 0.0f;
 	for (int i = 0; i < 3; i++)
 	{

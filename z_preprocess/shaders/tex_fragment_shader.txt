@@ -31,9 +31,11 @@ void main()
     float h = 1.03696;
 	float uCoord = (TexCoords.x * h) - h/2;
 	float vCoord = (TexCoords.y * h) - h/2;
-	
+	vec3 right = vec3(1.0, 0.0, 0.0);
 	//vec3 worldPos = center0 + CameraRight_worldspace * uCoord + CameraUp_worldspace *  vCoord;
+	
 	vec3 worldPos = CameraRight_worldspace * uCoord + CameraUp_worldspace *  vCoord;
+	//vec3 worldPos = right * uCoord + CameraUp_worldspace *  vCoord;
 
 	if(abs(length(CameraUp_worldspace)) > 1.001)
 	{
@@ -49,9 +51,14 @@ void main()
 	float dist1 = dot(worldPos, normal1);
 	vec3 proj1 = (worldPos - normal1 * dist1); //- center1;
 
-	vec3 u1 = dot(proj1, CameraRight_worldspace) * CameraRight_worldspace;
-	//vec3 v1 = proj1 - u1;
-	vec3 v1 = u1 - proj1;
+	//vec3 u1 = dot(proj1, CameraRight_worldspace) * CameraRight_worldspace;
+	vec3 v1 = (dot(proj1, up1) / length(up1)) * up1;	
+	vec3 u1 = proj1 - v1;
+	//vec3 v1 = u1 - proj1;
+
+	//float foo = dot(proj1, up1);
+	//FragColor = vec4(dist1, dist1, dist1, 1.0);
+	//return;
 
 	//vec3 u1 = (dot(proj1, right1) / length(right1)) * right1;
 	//vec3 v1 = proj1 - u1;
@@ -62,24 +69,29 @@ void main()
 	
 	//float c1 = (length(u1) + h/2) * h;
 	//float c2 = (length(v1) + h/2) * h;
-
-	/*
-	float sign1 = 1.0;
-	if(u1 < 0.0)
-	{
-		sign1 = -1.0;
-	}
-	float sign2 = 1.0;
-	if(v2 < 0.0)
-	{
-		sign2 = -1.0;
-	}*/
-
+	
 	//float c1 = ((length(u1)) + h/2) * h;
 	//float c2 = ((length(v1)) + h/2) * h;
-	float c1 = (u1.x + u1.y + h/2) * h;
-	float c2 = (v1.x + v1.y + h/2) * h;
+	
+	//float c1 = (u1.x + u1.y + u1.z + h/2) * h;
+	//float c2 = (v1.x + v1.y + v1.z + h/2) * h;
 
+	vec3 rrr = cross(normal1, up1);
+	float c1 = (dot(proj1, -rrr) + h/2) * h;
+	float c2 = (dot(proj1, up1) + h/2) * h;
+
+	/*
+	mat3x2 proj2;
+	vec3 rrr = cross(normal1, up1);
+	proj2[0][0] = rrr.x;
+	proj2[1][0] = rrr.y;
+	proj2[2][0] = rrr.z;
+	proj2[0][1] = up1.x;
+	proj2[1][1] = up1.y;
+	proj2[2][1] = up1.z;
+	vec2 sampleVec2d = proj2 * proj1;
+	float c1 = dot()
+	*/
 	if(c1 > 1.0 || c2 > 1.0)
 	{
 		FragColor = vec4(1.0, 0.0, 0.0, 1.0);
@@ -90,7 +102,7 @@ void main()
 	}
 	else
 	{
-		FragColor = texture(screenTexture1, vec2(c1, 1.0 - c2));
+		FragColor = texture(screenTexture1, vec2(c1, c2));
 		//FragColor = texture(screenTexture1, vec2(uCoord, vCoord));
 		//FragColor = vec4(0.0, 0.0, 1.0, 1.0);
 	}	
