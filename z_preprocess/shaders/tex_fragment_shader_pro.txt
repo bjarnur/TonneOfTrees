@@ -57,7 +57,20 @@ void main()
 
 	vec4 texColor1 = texture(screenTexture1, coords1);
 	vec4 texColor2 = texture(screenTexture2, coords2);
-	vec4 texColor3 = texture(screenTexture3, coords3);	
+	vec4 texColor3 = texture(screenTexture3, coords3);
+	
+	vec3 q = worldPos + 
+	(weights.x * texColor1.x + weights.y * texColor2.x + weights.z * texColor3.x) * (1.0 * cross(CameraRight, CameraUp));
+	coords1 = projectPointToSample(q, normal1, up1, sampleDim);
+	coords2 = projectPointToSample(q, normal2, up2, sampleDim);
+	coords3 = projectPointToSample(q, normal3, up3, sampleDim);
+
+	texColor1 = texture(screenTexture1, coords1);
+	texColor2 = texture(screenTexture2, coords2);
+	texColor3 = texture(screenTexture3, coords3);
+
+	vec3 pv = worldPos + 
+	(weights.x * texColor1.x + weights.y * texColor2.x + weights.z * texColor3.x) * (1.0 * cross(CameraRight, CameraUp));
 
 	vec4 texColor = (texColor1 * weights.x) + (texColor2 * weights.y) + (texColor3 * weights.z);
 
@@ -65,11 +78,6 @@ void main()
 	if(texColor.r == 0.0 && texColor.g == 0.0 && texColor.b == 0.0 && texColor.a < 0.2)
 		discard;
 	texColor.a = 1;
-
-	FragColor = texColor;
-
-
-
 
 	//Convenient for debugging
 	/*	

@@ -28,6 +28,7 @@ void Seed::draw(Shader shader, Sample * neighborSamples, const glm::mat4 & view_
 	shader.setVec3("up1", neighborSamples[0].up);
 	shader.setVec3("up2", neighborSamples[1].up);
 	shader.setVec3("up3", neighborSamples[2].up);
+
 	shader.setVec3("normal1", neighborSamples[0].normal);
 	shader.setVec3("normal2", neighborSamples[1].normal);
 	shader.setVec3("normal3", neighborSamples[2].normal);

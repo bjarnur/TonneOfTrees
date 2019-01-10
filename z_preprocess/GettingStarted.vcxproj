@@ -149,6 +149,7 @@
     <Text Include="shaders\sphere_vertex_shader.txt" />
     <Text Include="shaders\tex_fragment_no_shader.txt" />
     <Text Include="shaders\tex_fragment_shader.txt" />
+    <Text Include="shaders\tex_fragment_shader_pro.txt" />
     <Text Include="shaders\tex_vertex_shader.txt" />
     <Text Include="shaders\vertex_shader.txt" />
   </ItemGroup>

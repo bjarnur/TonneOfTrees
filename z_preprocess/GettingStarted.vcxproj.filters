@@ -103,5 +103,8 @@
     <Text Include="shaders\tex_fragment_no_shader.txt">
       <Filter>Resource Files\Shaders</Filter>
     </Text>
+    <Text Include="shaders\tex_fragment_shader_pro.txt">
+      <Filter>Resource Files\Shaders</Filter>
+    </Text>
   </ItemGroup>
 </Project>

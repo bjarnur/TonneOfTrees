@@ -41,7 +41,7 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 800;
 const unsigned int TEX_WIDTH = 256;
 const unsigned int TEX_HEIGHT = 256;
-const unsigned int NUM_SAMPLES = 400;
+const unsigned int NUM_SAMPLES = 500;
 
 
 float deltaTime = 0.0f;	// Time between current frame and last frame
@@ -56,6 +56,9 @@ bool draw_center_line = false;
 bool draw_center_plane = false;
 bool draw_depth = false;
 bool camera_backed_up = false;
+bool use_pro_shader = false;
+bool background_blue = false;
+bool render_empty = false;
 int selected_scene = 1;
 
 glm::vec3 * sample_points;
@@ -176,7 +179,9 @@ int main()
 	Shader blue_shader = Shader("shaders\\sphere_vertex_shader.txt", "shaders\\blue_fragment_shader.txt");
 	Shader preprocess_shader = Shader("shaders\\preprocess_vert_shader.txt", "shaders\\preprocess_frag_shader.txt");
 	Shader billboard_shader = Shader("shaders\\billboard_vertex_shader.txt", "shaders\\sphere_fragment_shader.txt");
-	Shader proxy_shader = Shader("shaders\\proxy_vertex_shader.txt", "shaders\\tex_fragment_shader.txt");
+	Shader proxy_shader = Shader("shaders\\proxy_vertex_shader.txt", "shaders\\sphere_fragment_shader.txt");
+	Shader quad_proxy_shader = Shader("shaders\\proxy_vertex_shader.txt", "shaders\\tex_fragment_shader.txt");
+	Shader pro_proxy_shader = Shader("shaders\\proxy_vertex_shader.txt", "shaders\\tex_fragment_shader_pro.txt");
 
 	//Configure mouse attributes
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -184,7 +189,11 @@ int main()
 	//Preparing model to render
 	float model_radius;
 	glm::vec3 model_center;		
-	Model tree_model("D:\\Bjarni\\Projects\\3Dmodels\\tree4\\Tree.obj");
+	//Model tree_model("D:\\Bjarni\\Projects\\3Dmodels\\tree\\Tree_OBJ.obj");
+	//Model tree_model("D:\\Bjarni\\Projects\\3Dmodels\\tree3\\Tree2.obj");
+	Model tree_model("D:\\Bjarni\\Projects\\3Dmodels\\tree4\\Tree.obj");	
+	//Model tree_model("D:\\Bjarni\\Projects\\3Dmodels\\tree7\\generic110.obj");
+	//Model tree_model("D:\\Bjarni\\Projects\\3Dmodels\\tree6\\Tree.obj");
 	tree_model.get_bounding_sphere(model_center, model_radius);
 	
 	//Preparing other geometry
@@ -223,7 +232,10 @@ int main()
 		//Setup for render to window
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glEnable(GL_DEPTH_TEST);
-		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+		if(background_blue)
+			glClearColor(0.0f, 0.0f, 0.7f, 1.0f);
+		else
+			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
@@ -256,9 +268,16 @@ int main()
 		if (selected_scene == 2)
 		{									
 			Sample * neighbor_samples = get_nearest_neighbors(glm::normalize(-camera->front), textures, 3);
-			s1.draw(proxy_shader, neighbor_samples, view, proj);
-			s2.draw(proxy_shader, neighbor_samples, view, proj);
-			s3.draw(proxy_shader, neighbor_samples, view, proj);
+
+			Shader tree_shader = proxy_shader;
+			if (use_pro_shader)
+				tree_shader = pro_proxy_shader;
+			else if (render_empty)
+				tree_shader = quad_proxy_shader;
+			
+			s1.draw(tree_shader, neighbor_samples, view, proj);
+			s2.draw(tree_shader, neighbor_samples, view, proj);
+			s3.draw(tree_shader, neighbor_samples, view, proj);
 
 			delete[] neighbor_samples;
 		}
@@ -296,6 +315,8 @@ void sample_from_points(GLuint framebuffer, GLuint * textures, Shader shader, Sh
 		
 		//Transform camera locations 		
 		camera_transform_mtx = glm::translate(camera_transform_mtx, glm::vec3(0.0f, -0.5f, -1.0f));
+		//camera_transform_mtx = glm::scale(camera_transform_mtx, glm::vec3(0.0002f, 0.0002f, 0.0002f));
+		//camera_transform_mtx = glm::scale(camera_transform_mtx, glm::vec3(0.02f, 0.02f, 0.02f));
 		camera_transform_mtx = glm::scale(camera_transform_mtx, glm::vec3(0.2f, 0.2f, 0.2f));
 		glm::vec3 camera_pos = camera_transform_mtx * glm::vec4(points[i], 1.0);
 		glm::vec3 camera_target = camera_transform_mtx * glm::vec4(model_center, 1.0);
@@ -421,7 +442,9 @@ void setup_matrices(Camera camera, glm::mat4 & view_mtx, glm::mat4 & proj_mtx, g
 	//model_mtx = glm::translate(model_mtx, glm::vec3(0.0f, -1.75f, 0.0f));
 	//model_mtx = glm::scale(model_mtx, glm::vec3(0.2f, 0.2f, 0.2f));
 	model_mtx = glm::translate(model_mtx, glm::vec3(0.0f, -0.5f, -1.0f)); 
-	model_mtx = glm::scale(model_mtx, glm::vec3(0.2f, 0.2f, 0.2f));	
+	//model_mtx = glm::scale(model_mtx, glm::vec3(0.0002f, 0.0002f, 0.0002f));	
+	//model_mtx = glm::scale(model_mtx, glm::vec3(0.02f, 0.02f, 0.02f));
+	model_mtx = glm::scale(model_mtx, glm::vec3(0.2f, 0.2f, 0.2f));
 }
 
 void draw_model(Model model, Shader shader, const glm::mat4 & view_mtx,
@@ -765,6 +788,21 @@ void process_input(GLFWwindow * window, Camera & camera)
 		draw_center_plane = !draw_center_plane;
 		config_swap_timer = 0.0f;
 	}	
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS && config_swap_timer > 0.2f)
+	{
+		use_pro_shader = !use_pro_shader;
+		config_swap_timer = 0.0f;
+	}
+	if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS && config_swap_timer > 0.2f)
+	{
+		background_blue = !background_blue;
+		config_swap_timer = 0.0f;
+	}		
+	if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS && config_swap_timer > 0.2f)
+	{
+		render_empty = !render_empty;
+		config_swap_timer = 0.0f;
+	}
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
